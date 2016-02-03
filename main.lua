@@ -17,6 +17,7 @@ function Initialize(Plugin)
 	cPluginManager.BindCommand("/skills", "mmo.skills", skills, " ~ list skills or add skillpoints")
 	cPluginManager.BindCommand("/battlelog", "mmo.battlelog", battlelog, " - turn battlelog on / off")
 	cPluginManager.BindCommand("/spell", "mmo.spell", spell, " ~ cast a spell")
+	cPluginManager.BindCommand("/mmo", "mmo.join", mmo_join, " ~ join a fraction")
 
 
 	-- Database stuff
@@ -39,10 +40,39 @@ function OnDisable()
 	LOG(PLUGIN:GetName() .. " is shutting down...")
 end
 
+function mmo_join(command, player)
+	local stats = get_stats(player)
+	if stats[1]["fraction"] ~= nil then
+		player:SendMessage("You already joined a Fraction")
+		return true
+	end
+	if command[3] == "horde" then
+		local updateList = cUpdateList()
+		:Update("fraction", "horde")
+		local whereList = cWhereList()
+		:Where("name", player:GetName())
+		local res = db:Update("mmo", updateList, whereList)
+		player:SendMessage("You joined the Horde")
+		return true
+	end
+	if command[3] == "alliance" then
+		local updateList = cUpdateList()
+		:Update("fraction", "alliance")
+		local whereList = cWhereList()
+		:Where("name", player:GetName())
+		local res = db:Update("mmo", updateList, whereList)
+		player:SendMessage("You joined the Alliance")
+		return true
+	end
+	player:SendMessage("usage /mmo join horde/alliance")
+	return true
+end
+
 function spell(command, player)
-	--TODO add more spells like invisible, antidamage, fireball, summon golem?, summon meat
+	--TODO add more spells like invisible, shield, fireball, summon golem?, summon meat, freeze, teleportation(fast but near(1 magic per block), 20s wait but wherever you want), summon taimed wolf
 	if #command == 1 then
 		player:SendMessage("/spell heal <player> | 10M | heal a player")
+		player:SendMessage("/spell revive <player> | 50M | teleport a died player back")
 		return true
 	end
 	if #command == 2 then
@@ -53,7 +83,7 @@ function spell(command, player)
 		return true
 	end
 	if #command == 3 then
-		if command[2] == "heal" then
+		if command[2] == "heal" then -- start heal
 			local heal_player = function(player)
 				player:Heal(5)
 				send_battlelog(player, "you have been healed")
@@ -66,7 +96,23 @@ function spell(command, player)
 				end
 			end
 			return true
-		end
+		end	-- end Heal
+		if command[2] == "revive" then -- start revive TODO ask for revive and add casting time
+			local revive_player = function(player)
+				local stats = get_stats(player)
+				player:SetPosX(stats[1]["last_killedx"])
+				player:SetPosY(stats[1]["last_killedy"])
+				player:SetPosZ(stats[1]["last_killedz"])
+				send_battlelog(player, "you have been revived")
+			end
+			if rem_magic(player, 50) then
+				if cRoot:Get():FindAndDoWithPlayer(command[3], revive_player) then
+					send_battlelog(player, "you revived " .. command[3])
+				else
+					send_battlelog(player, "can't revive " .. command[3] .. ", Player not found.")
+				end
+			end
+		end	-- end revive
 	end
 	return true
 end
@@ -153,6 +199,11 @@ function show_stats (Player)
 	 Player:SendMessage("Endurance: " .. stats[1]["endurance"])
 	 Player:SendMessage("Level: " .. calc_level(stats[1]["exp"]))
 	 Player:SendMessage("Magic: " .. stats[1]["magic"] .. " of " .. stats[1]["magic_max"])
+	 if stats[1]["fraction"] == nil then
+	 	Player:SendMessage("Use /mmo join horde/alliance to join a fraction")
+	 else
+		Player:SendMessage("Fraction: " .. stats[1]["fraction"])
+	 end
 	 if calc_available_skill_points(Player) ~= 0 then
 		 Player:SendMessage("Available Skillpoints: " .. calc_available_skill_points(Player))
 	 end
@@ -198,6 +249,15 @@ function register_new_player(Player)
 end
 
 function MyOnKilled(Victim, TDI)
+	if Victim:IsPlayer() then
+		local updateList = cUpdateList()
+		:Update("last_killedx", Victim:GetPosX())
+		:Update("last_killedy", Victim:GetPosY())
+		:Update("last_killedz", Victim:GetPosZ())
+		local whereList = cWhereList()
+		:Where("name", Victim:GetName())
+		local res = db:Update("mmo", updateList, whereList)
+	end
 	if (TDI.Attacker ~= nil and TDI.Attacker:IsPlayer()) then
 		local exp = 0
 		player = tolua.cast(TDI.Attacker, "cPlayer")
@@ -276,7 +336,23 @@ function skills(skillname, player)
 	return true
 end
 
+function get_fraction(player)
+	local player_name = player:GetName()
+	local whereList = cWhereList()
+	:Where("name", player:GetName())
+	local res = db:Select("mmo", "fraction", whereList)
+	return res[1]["fraction"]
+end
+
 function MyOnTakeDamage(Receiver, TDI)
+	if TDI.Attacker ~= nil and Receiver:IsPlayer() and TDI.Attacker:isPlayer() then
+		local player = tolua.cast(TDI.Attacker, "cPlayer")
+		if get_fraction(Receiver) == get_fraction(player) then
+			TDI.FinalDamage = 0
+			player:SendMessage("this Player is in the same Fraction")
+			return true
+		end
+	end
 	if TDI.Attacker ~= nil and TDI.Attacker:IsPlayer() then
 		local player = tolua.cast(TDI.Attacker, "cPlayer")
 		local stats = get_stats(player)
@@ -376,6 +452,10 @@ local db = cSQLiteHandler("mmo.sqlite",
 	:Field("endurance","INTEGER")
 	:Field("skillpoints","INTEGER")
 	:Field("battlelog","INTEGER")
+	:Field("fraction","TEXT")
+	:Field("last_killedx", "INTEGER")
+	:Field("last_killedy", "INTEGER")
+	:Field("last_killedz", "INTEGER")
 )
   return true
 end
