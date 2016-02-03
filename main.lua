@@ -345,7 +345,7 @@ function get_fraction(player)
 end
 
 function MyOnTakeDamage(Receiver, TDI)
-	if TDI.Attacker ~= nil and Receiver:IsPlayer() and TDI.Attacker:isPlayer() then
+	if TDI.Attacker ~= nil and Receiver:IsPlayer() and TDI.Attacker:IsPlayer() then
 		local player = tolua.cast(TDI.Attacker, "cPlayer")
 		if get_fraction(Receiver) == get_fraction(player) then
 			TDI.FinalDamage = 0
