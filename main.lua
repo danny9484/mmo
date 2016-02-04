@@ -10,6 +10,7 @@ function Initialize(Plugin)
 	cPluginManager:AddHook(cPluginManager.HOOK_TAKE_DAMAGE, MyOnTakeDamage);
 	cPluginManager:AddHook(cPluginManager.HOOK_PLAYER_SPAWNED, MyOnPlayerSpawned);
 	cPluginManager:AddHook(cPluginManager.HOOK_WORLD_TICK, MyOnWorldTick);
+	cPluginManager:AddHook(cPluginManager.HOOK_DISCONNECT, MyOnDisconnect);
 
 	PLUGIN = Plugin -- NOTE: only needed if you want OnDisable() to use GetName() or something like that
 
@@ -26,6 +27,7 @@ function Initialize(Plugin)
 
 	-- declare global variables
 	counter = 0
+	stats = {}
 
 	-- Use the InfoReg shared library to process the Info.lua file:
 	dofile(cPluginManager:GetPluginsPath() .. "/InfoReg.lua")
@@ -40,6 +42,11 @@ function OnDisable()
 	LOG(PLUGIN:GetName() .. " is shutting down...")
 end
 
+function MyOnDisconnect(Client, Reason)
+	save_player(Client:GetPlayer())
+	return true
+end
+
 function mmo_join(command, player)
 	local stats = get_stats(player)
 	if stats[1]["fraction"] ~= nil then
@@ -47,25 +54,46 @@ function mmo_join(command, player)
 		return true
 	end
 	if command[3] == "horde" then
-		local updateList = cUpdateList()
-		:Update("fraction", "horde")
-		local whereList = cWhereList()
-		:Where("name", player:GetName())
-		local res = db:Update("mmo", updateList, whereList)
+		set_stats(player, "fraction", "alliance")
 		player:SendMessage("You joined the Horde")
 		return true
 	end
 	if command[3] == "alliance" then
-		local updateList = cUpdateList()
-		:Update("fraction", "alliance")
-		local whereList = cWhereList()
-		:Where("name", player:GetName())
-		local res = db:Update("mmo", updateList, whereList)
+		set_stats(player, "fraction", "alliance")
 		player:SendMessage("You joined the Alliance")
 		return true
 	end
 	player:SendMessage("usage /mmo join horde/alliance")
 	return true
+end
+
+function save_player(player)
+	local stats = get_stats(player)
+	local updateList = cUpdateList()
+	:Update("name", stats[1]["name"])
+	:Update("exp", stats[1]["exp"])
+	:Update("strength", stats[1]["strength"])
+	:Update("agility", stats[1]["agility"])
+	:Update("luck", stats[1]["luck"])
+	:Update("intelligence", stats[1]["intelligence"])
+	:Update("magic", stats[1]["magic"])
+	:Update("magic_max", stats[1]["magic_max"])
+	:Update("endurance", stats[1]["endurance"])
+	:Update("skillpoints", calc_level(stats[1]["exp"]))
+	:Update("battlelog", stats[1]["battlelog"])
+	:Update("fraction", stats[1]["fraction"])
+	local whereList = cWhereList()
+	:Where("name", player:GetName())
+	local res = db:Update("mmo", updateList, whereList)
+	if stats[1]["last_killedx"] ~= nil and stats[1]["last_killedy"] ~= nil and stats[1]["last_killedz"] ~= nil then
+		local updateList = cUpdateList()
+		:Update("last_killedx", stats[1]["last_killedx"])
+		:Update("last_killedy", stats[1]["last_killedy"])
+		:Update("last_killedz", stats[1]["last_killedz"])
+		local whereList = cWhereList()
+		:Where("name", player:GetName())
+		local res = db:Update("mmo", updateList, whereList)
+	end
 end
 
 function spell(command, player)
@@ -118,14 +146,13 @@ function spell(command, player)
 end
 
 function rem_magic(player, amount)
-	stats = get_stats(player)
-	if tonumber(stats[1]["magic"]) >= amount then
-		local updateList = cUpdateList()
-		:Update("magic", (stats[1]["magic"] - amount))
-		local whereList = cWhereList()
-		:Where("name", player:GetName())
-		local res = db:Update("mmo", updateList, whereList)
-		send_battlelog(player, "Magic: " .. stats[1]["magic"] - amount .. " of " .. stats[1]["magic_max"])
+	local stats = get_stats(player)
+
+	if (tonumber(stats[1]["magic"]) >= amount) then
+		local magic_after = tonumber(stats[1]["magic"]) - amount
+		-- LOG(magic_after)
+		set_stats(player, "magic", magic_after)
+		send_battlelog(player, "Magic: " .. stats[1]["magic"] .. " of " .. stats[1]["magic_max"])
 		return true
 	else
 		send_battlelog(player, "not enough Magic!")
@@ -135,26 +162,29 @@ end
 
 function add_magic_regeneration(player, percentage)
 	local stats = get_stats(player)
-	if tonumber(stats[1]["magic"]) < tonumber(stats[1]["magic_max"]) then
-		local updateList = cUpdateList()
-		:Update("magic", (stats[1]["magic"] + (stats[1]["magic_max"] * percentage / 100)))
-		local whereList = cWhereList()
-		:Where("name", player:GetName())
-		local res = db:Update("mmo", updateList, whereList)
-		send_battlelog(player, "Magic: " .. stats[1]["magic"] + (stats[1]["magic_max"] * percentage / 100) .. " of " .. stats[1]["magic_max"])
-	end
+	if tonumber(stats[1]["magic"]) < tonumber(stats[1]["magic_max"]) then-- - (tonumber(stats[1]["magic_max"]) * percentage / 100) then -- this Workaround doesn't really make sense
+		local magic_after = stats[1]["magic"] + math.floor(stats[1]["magic_max"] * percentage / 10) / 10
+		set_stats(player, "magic", magic_after)
+		send_battlelog(player, "Magic: " .. stats[1]["magic"] .. " of " .. stats[1]["magic_max"])
+		end
 end
 
 function MyOnWorldTick(World, TimeDelta)
 	-- add MAGIC regeneration
 	local callback = function(player)
-		if counter > 50 then
-			counter = 0
-			add_magic_regeneration(player, 1)
-		end
-		counter = counter + 1
+		add_magic_regeneration(player, 1)
+		counter = 75
 	end
-	World:ForEachPlayer(callback)
+	counter = counter + 1
+	if counter > 50 then
+		World:ForEachPlayer(callback)
+		if counter == 75 then
+			counter = 0
+		end
+	end
+	if counter > 100 then
+		counter = 0
+	end
 end
 
 function battlelog(command, player)
@@ -187,6 +217,7 @@ function MyOnPlayerSpawned(Player)
 		register_new_player(Player)
 	end
 	show_stats(Player)
+	stats = get_stats(Player)
 end
 
 function show_stats (Player)
@@ -209,10 +240,22 @@ function show_stats (Player)
 	 end
 end
 
-function get_stats (Player)
+function get_stats_initialize(Player)
 	local whereList = cWhereList()
 	:Where("name", Player:GetName())
 	local res = db:Select("mmo", "*", whereList)
+	return res
+end
+
+function set_stats(player, stat, amount)
+	stats[player:GetName()][1][stat] = amount
+end
+
+function get_stats(player)
+	if stats[player:GetName()] == nil then
+		stats[player:GetName()] = get_stats_initialize(player)
+	end
+	res = stats[player:GetName()]
 	return res
 end
 
@@ -258,9 +301,15 @@ function MyOnKilled(Victim, TDI)
 		:Where("name", Victim:GetName())
 		local res = db:Update("mmo", updateList, whereList)
 	end
+	if TDI.Attacker ~= nil and Victim:IsPlayer() and TDI.Attacker:IsPlayer() then
+		local player tolua.cast(TDI.Attacker, "cPlayer")
+		local stats = get_stats(Victim)
+		exp = 25 * calc_level(stats[1]["exp"])
+		send_battlelog(player, "You killed a Player")
+	end
 	if (TDI.Attacker ~= nil and TDI.Attacker:IsPlayer()) then
 		local exp = 0
-		player = tolua.cast(TDI.Attacker, "cPlayer")
+		local player = tolua.cast(TDI.Attacker, "cPlayer")
 		-- TODO extend monsterlist
 		if Victim:GetMobFamily() == 0 then
 			send_battlelog(player, "You killed a Monster")
@@ -296,21 +345,13 @@ function add_skill(player, skillname)
 	-- add skill point to the given skill if skillpoints available
 	if calc_available_skill_points(player) > 0 then
 		local stats = get_stats(player)
-		local skill = tonumber(stats[1][skillname[2]]) + 1
-		local updateList = cUpdateList()
-		:Update(skillname[2], skill)
-		local whereList = cWhereList()
-		:Where("name", player:GetName())
-		local res = db:Update("mmo", updateList, whereList)
+		set_stats(player, skillname[2], tonumber(stats[1][skillname[2]]) + 1)
 		if skillname[2] == "intelligence" then
-			local updateList = cUpdateList()
-			:Update("magic_max", (stats[1]["magic_max"] + 10))
-			local whereList = cWhereList()
-			:Where("name", player:GetName())
-			local res = db:Update("mmo", updateList, whereList)
+			set_stats(player, "magic_max", stats[1]["magic_max"] + 10)
 		end
+		return true
 	end
-	return true
+	return false
 end
 
 function skills(skillname, player)
@@ -320,34 +361,34 @@ function skills(skillname, player)
 	end
 	if skillname[2] == "strength" and add_skill(player, skillname) then
 		player:SendMessage("added 1 Point to Strength")
+		return true
 	end
 	if skillname[2] == "endurance" and add_skill(player, skillname) then
 		player:SendMessage("added 1 Point to Endurance")
+		return true
 	end
 	if skillname[2] == "intelligence" and add_skill(player, skillname) then
 		player:SendMessage("added 1 Point to Intelligence")
+		return true
 	end
 	if skillname[2] == "agility" and add_skill(player, skillname) then
 		player:SendMessage("added 1 Point to Agility")
+		return true
 	end
 	if skillname[2] == "luck" and add_skill(player, skillname) then
 		player:SendMessage("added 1 Point to Luck")
+		return true
 	end
+	player:SendMessage("You have not enough Available Skill Points")
 	return true
-end
-
-function get_fraction(player)
-	local player_name = player:GetName()
-	local whereList = cWhereList()
-	:Where("name", player:GetName())
-	local res = db:Select("mmo", "fraction", whereList)
-	return res[1]["fraction"]
 end
 
 function MyOnTakeDamage(Receiver, TDI)
 	if TDI.Attacker ~= nil and Receiver:IsPlayer() and TDI.Attacker:IsPlayer() then
 		local player = tolua.cast(TDI.Attacker, "cPlayer")
-		if get_fraction(Receiver) == get_fraction(player) then
+		local stats_receiver = get_stats(Receiver)
+		local stats_attacker = get_stats(player)
+		if stats_receiver[1]["fraction"] == stats_attacker[1]["fraction"] then
 			TDI.FinalDamage = 0
 			player:SendMessage("this Player is in the same Fraction")
 			return true
@@ -389,18 +430,14 @@ end
 
 function get_exp(player)
 	-- Get current exp from DB
-	local whereList = cWhereList()
-	:Where("name", player:GetName())
-	local res = db:Select("mmo", "exp", whereList)
-	return res[1]["exp"]
+	local stats = get_stats(player)
+	return stats[1]["exp"]
 end
 
 function send_battlelog(player, message)
 	-- Get if battlelog is on or off from DB
-	local whereList = cWhereList()
-	:Where("name", player:GetName())
-	local res = db:Select("mmo", "battlelog", whereList)
-	if res[1]["battlelog"] == "1" then
+	local stats = get_stats(player)
+	if stats[1]["battlelog"] == "1" then
 		player:SendMessage(message)
 	end
 end
@@ -412,14 +449,11 @@ function give_exp(exp, player)
 	local level_before = calc_level(cexp)
 	-- add exp in database
 	local exp_after = cexp + exp
-	local updateList = cUpdateList()
-	:Update("exp", exp_after)
-	:Update("skillpoints", calc_level(exp_after) - 1)
-	local whereList = cWhereList()
-	:Where("name", player:GetName())
-	local res = db:Update("mmo", updateList, whereList)
+	set_stats(player, "exp", exp_after)
 	local level_after = calc_level(cexp)
 	if level_before < level_after then
+		local stats = get_stats(player)
+		stats[1]["skillpoints"] = stats[1]["skillpoints"] + 1
 		return true
 	end
 	return false
