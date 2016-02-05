@@ -328,7 +328,7 @@ function MyOnKilled(Victim, TDI)
 			exp = 5
 		end
 	end
-	if give_exp(exp, player) then
+	if TDI.Attacker:IsPlayer() and give_exp(exp, player) then
 		local lvl = calc_level(get_exp(player))
 		send_battlelog(player, "Level UP! you are now Level " .. lvl)
 	end
