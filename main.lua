@@ -301,14 +301,14 @@ function MyOnKilled(Victim, TDI)
 		:Where("name", Victim:GetName())
 		local res = db:Update("mmo", updateList, whereList)
 	end
+	local exp = 0
 	if TDI.Attacker ~= nil and Victim:IsPlayer() and TDI.Attacker:IsPlayer() then
-		local player tolua.cast(TDI.Attacker, "cPlayer")
+		local player = tolua.cast(TDI.Attacker, "cPlayer")
 		local stats = get_stats(Victim)
 		exp = 25 * calc_level(stats[1]["exp"])
 		send_battlelog(player, "You killed a Player")
 	end
-	if (TDI.Attacker ~= nil and TDI.Attacker:IsPlayer()) then
-		local exp = 0
+	if (TDI.Attacker ~= nil and TDI.Attacker:IsPlayer() and Victim:IsMob()) then
 		local player = tolua.cast(TDI.Attacker, "cPlayer")
 		-- TODO extend monsterlist
 		if Victim:GetMobFamily() == 0 then
@@ -327,10 +327,10 @@ function MyOnKilled(Victim, TDI)
 			send_battlelog(player, "You killed Something Mysterious")
 			exp = 5
 		end
-		if give_exp(exp, player) then
-			local lvl = calc_level(get_exp(player))
-			send_battlelog(player, "Level UP! you are now Level " .. lvl)
-		end
+	end
+	if give_exp(exp, player) then
+		local lvl = calc_level(get_exp(player))
+		send_battlelog(player, "Level UP! you are now Level " .. lvl)
 	end
 end
 
