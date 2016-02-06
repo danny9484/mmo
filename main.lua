@@ -50,23 +50,25 @@ end
 
 function MyOnPlayerSpawned(Player)
 	set_stats(Player, "health", Player:GetMaxHealth())
-	Player:SetInvulnerableTicks(100)
+	Player:SetInvulnerableTicks(100) -- somebug caused spawn in air as a workaround for no fall damage
 end
 
 function mmo_join(command, player)
 	local stats = get_stats(player)
+	if stats[1]["fraction"] == nil or stats[1]["fraction"] == "" then
+		if command[3] == "horde" then
+			set_stats(player, "fraction", "alliance")
+			player:SendMessage("You joined the Horde")
+			return true
+		end
+		if command[3] == "alliance" then
+			set_stats(player, "fraction", "alliance")
+			player:SendMessage("You joined the Alliance")
+			return true
+		end
+	end
 	if stats[1]["fraction"] ~= "" then
 		player:SendMessage("You already joined a Fraction")
-		return true
-	end
-	if command[3] == "horde" then
-		set_stats(player, "fraction", "alliance")
-		player:SendMessage("You joined the Horde")
-		return true
-	end
-	if command[3] == "alliance" then
-		set_stats(player, "fraction", "alliance")
-		player:SendMessage("You joined the Alliance")
 		return true
 	end
 	player:SendMessage("usage /mmo join horde/alliance")
@@ -87,7 +89,7 @@ function save_player(player)
 	:Update("magic", stats[1]["magic"])
 	:Update("magic_max", stats[1]["magic_max"])
 	:Update("endurance", stats[1]["endurance"])
-	:Update("skillpoints", calc_level(stats[1]["exp"]))
+	:Update("skillpoints", calc_available_skill_points(player))
 	:Update("battlelog", stats[1]["battlelog"])
 	:Update("fraction", stats[1]["fraction"])
 	local whereList = cWhereList()
@@ -107,14 +109,18 @@ end
 function spell(command, player)
 	--TODO add more spells like invisible, shield, fireball, summon golem?, summon meat, freeze, teleportation(fast but near(1 magic per block), 20s wait but wherever you want), summon taimed wolf
 	if #command == 1 then
-		player:SendMessage("/spell heal <player> | 10M | heal a player")
-		player:SendMessage("/spell revive <player> | 50M | teleport a died player back")
+		player:SendMessage("/spell heal <player> | 100M | heal a player")
+		player:SendMessage("/spell revive <player> | 500M | teleport a died player back")
 		return true
 	end
 	if #command == 2 then
-		if command[2] == "heal" and rem_magic(player, 10) then
+		if command[2] == "heal" and rem_magic(player, 100) then
 			local stats = get_stats(player)
-			set_stats(player, "health", tonumber(stats[1]["health"]) + 5)
+			if tonumber(stats[1]["health"]) + 5 > player:GetMaxHealth() then
+				set_stats(player, "health", player:GetMaxHealth())
+			else
+				set_stats(player, "health", tonumber(stats[1]["health"]) + 5)
+			end
 			send_battlelog(player, "you have been healed")
 		end
 		return true
@@ -123,7 +129,11 @@ function spell(command, player)
 		if command[2] == "heal" then -- start heal
 			local heal_player = function(player)
 				local stats = get_stats(player)
-				set_stats(player, "health", tonumber(stats[1]["health"]) + 5)
+				if tonumber(stats[1]["health"]) + 5 > player:GetMaxHealth() then
+					set_stats(player, "health", player:GetMaxHealth())
+				else
+					set_stats(player, "health", tonumber(stats[1]["health"]) + 5)
+				end
 				send_battlelog(player, "you have been healed")
 			end
 			if rem_magic(player, 10) then
@@ -141,7 +151,7 @@ function spell(command, player)
 			end
 			local revive_player = function(player)
 				local stats = get_stats(player)
-				player:SetInvulnerableTicks(50)
+				player:SetInvulnerableTicks(500)
 				player:SetPosX(stats[1]["last_killedx"])
 				player:SetPosY(stats[1]["last_killedy"])
 				player:SetPosZ(stats[1]["last_killedz"])
@@ -175,7 +185,7 @@ end
 
 function add_magic_regeneration(player, percentage)
 	local stats = get_stats(player)
-	if tonumber(stats[1]["magic"]) < tonumber(stats[1]["magic_max"]) - (tonumber(stats[1]["magic_max"]) * percentage / 100) then -- this Workaround doesn't really make sense
+	if tonumber(stats[1]["magic"]) < tonumber(stats[1]["magic_max"]) then -- this Workaround doesn't really make sense
 		local magic_after = stats[1]["magic"] + math.floor(stats[1]["magic_max"] * percentage / 10) / 10
 		set_stats(player, "magic", magic_after)
 		end
@@ -315,8 +325,8 @@ function register_new_player(Player)
 	set_stats(Player, "endurance", 1)
 	set_stats(Player, "skillpoints", 0)
 	set_stats(Player, "battlelog", "1")
-	set_stats(Player, "magic", 10)
-	set_stats(Player, "magic_max", 10)
+	set_stats(Player, "magic", 100)
+	set_stats(Player, "magic_max", 100)
 end
 
 function MyOnKilled(Victim, TDI)
@@ -375,7 +385,7 @@ function add_skill(player, skillname)
 			player:SetMaxHealth(player:GetMaxHealth() + 20)
 		end
 		if skillname[2] == "intelligence" then
-			set_stats(player, "magic_max", stats[1]["magic_max"] + 10)
+			set_stats(player, "magic_max", stats[1]["magic_max"] + 100)
 		end
 		return true
 	end
@@ -453,7 +463,7 @@ function MyOnTakeDamage(Receiver, TDI)
 			TDI.FinalDamage = TDI.FinalDamage / (stats[1]["agility"] / 5)
 			send_battlelog(player, "you got " .. TDI.FinalDamage .. " Fall Damage")
 		end
-		if stats[1]["health"] > TDI.FinalDamage then
+		if tonumber(stats[1]["health"]) > TDI.FinalDamage then
 			set_stats(Receiver, "health", stats[1]["health"] - TDI.FinalDamage)
 			TDI.FinalDamage = 1
 		end
