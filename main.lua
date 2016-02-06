@@ -162,7 +162,7 @@ end
 function rem_magic(player, amount)
 	local stats = get_stats(player)
 
-	if (tonumber(stats[1]["magic"]) >= amount) then
+	if tonumber(stats[1]["magic"]) >= amount then
 		local magic_after = tonumber(stats[1]["magic"]) - amount
 		-- LOG(magic_after)
 		set_stats(player, "magic", magic_after)
@@ -175,7 +175,7 @@ end
 
 function add_magic_regeneration(player, percentage)
 	local stats = get_stats(player)
-	if tonumber(stats[1]["magic"]) < tonumber(stats[1]["magic_max"]) then-- - (tonumber(stats[1]["magic_max"]) * percentage / 100) then -- this Workaround doesn't really make sense
+	if tonumber(stats[1]["magic"]) < tonumber(stats[1]["magic_max"]) - (tonumber(stats[1]["magic_max"]) * percentage / 100) then -- this Workaround doesn't really make sense
 		local magic_after = stats[1]["magic"] + math.floor(stats[1]["magic_max"] * percentage / 10) / 10
 		set_stats(player, "magic", magic_after)
 		end
@@ -192,7 +192,7 @@ function MyOnWorldTick(World, TimeDelta)
 		player:SetHealth(tonumber(stats[1]["health"]) / (player:GetMaxHealth() / 20))
 		counter = 75
 		set_stats(player, "health_before", player:GetHealth())
-		player:SendAboveActionBarMessage("Health: " .. stats[1]["health"] .. " / " .. player:GetMaxHealth() .. " | Magic: " .. stats[1]["magic"] .. " / " .. stats[1]["magic_max"] .. " | lvl: " .. calc_level(stats[1]["exp"]) .. " | exp: " .. stats[1]["exp"])
+		player:SendAboveActionBarMessage("Health: " .. stats[1]["health"] .. " / " .. player:GetMaxHealth() .. " | Magic: " .. stats[1]["magic"] .. " / " .. stats[1]["magic_max"] .. " | lvl: " .. calc_level(stats[1]["exp"]) .. " | exp: " .. stats[1]["exp"] .. " / " .. calc_exp_to_level(calc_level(stats[1]["exp"]) + 1))
 	end
 	counter = counter + 1
 	if counter > 50 then
@@ -453,8 +453,10 @@ function MyOnTakeDamage(Receiver, TDI)
 			TDI.FinalDamage = TDI.FinalDamage / (stats[1]["agility"] / 5)
 			send_battlelog(player, "you got " .. TDI.FinalDamage .. " Fall Damage")
 		end
-		set_stats(Receiver, "health", stats[1]["health"] - TDI.FinalDamage)
-		TDI.FinalDamage = 1
+		if stats[1]["health"] > TDI.FinalDamage then
+			set_stats(Receiver, "health", stats[1]["health"] - TDI.FinalDamage)
+			TDI.FinalDamage = 1
+		end
 	end
 end
 
@@ -487,6 +489,16 @@ function give_exp(exp, player)
 		return true
 	end
 	return false
+end
+
+function calc_exp_to_level(level)
+	local exp_needed = 200
+	local count = 2
+	while count < tonumber(level) do
+		exp_needed = exp_needed + (exp_needed / 2)
+		count = count + 1
+	end
+	return exp_needed
 end
 
 function calc_level(exp)
