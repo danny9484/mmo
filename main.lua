@@ -21,14 +21,32 @@ function Initialize(Plugin)
 	cPluginManager.BindCommand("/spell", "mmo.spell", spell, " ~ cast a spell")
 	cPluginManager.BindCommand("/mmo", "mmo.join", mmo_join, " ~ join a fraction")
 
-
 	-- Database stuff
 	db = cSQLiteHandler("mmo.sqlite")
 	create_database()
 
 	-- declare global variables
+	spell_counter = 1
+	spells = {}
 	counter = 0
 	stats = {}
+
+	-- read Config
+
+	--local IniFile = cIniFile();
+	--if (IniFile:ReadFile(PLUGIN:GetLocalFolder() .. "/config.ini")) then
+	--	exp_multiplicator = IniFile("Settings", "exp_multiplicator")
+	--	battlelog_default = IniFile("Settings", "battlelog_default")
+	--	statusbar = IniFile("Settings", "statusbar")
+	--	    while IniFile:GetValue("Spells", tostring(spell_counter)) ~= "" do
+	--      Messages[spell_counter] = IniFile:GetValue("Spells", tostring(spell_counter))
+	--      LOG(Plugin:GetName() .. ": Spell Initialized: " .. Messages[spell_counter])
+	--      spell_counter = spell_counter + 1
+	--    end
+	--else
+	--  LOG("can't read config.ini")
+	--  return false
+	--end
 
 	-- Use the InfoReg shared library to process the Info.lua file:
 	dofile(cPluginManager:GetPluginsPath() .. "/InfoReg.lua")
@@ -183,25 +201,28 @@ function rem_magic(player, amount)
 	end
 end
 
-function add_magic_regeneration(player, percentage)
-	local stats = get_stats(player)
+function add_magic_regeneration(player, percentage, stats)
 	if tonumber(stats[1]["magic"]) < tonumber(stats[1]["magic_max"]) then -- this Workaround doesn't really make sense
 		local magic_after = stats[1]["magic"] + math.floor(stats[1]["magic_max"] * percentage / 10) / 10
 		set_stats(player, "magic", magic_after)
 		end
 end
 
+function add_health_regeneration(player, stats)
+	if tonumber(stats[1]["health_before"]) < player:GetHealth() and tonumber(stats[1]["health"]) < player:GetMaxHealth() then
+		set_stats(player, "health", stats[1]["health"] + 1)
+	end
+	player:SetHealth(tonumber(stats[1]["health"]) / (player:GetMaxHealth() / 20))
+	set_stats(player, "health_before", player:GetHealth())
+end
+
 function MyOnWorldTick(World, TimeDelta)
 	-- add MAGIC regeneration
 	local callback = function(player)
 		local stats = get_stats(player)
-		add_magic_regeneration(player, 1)
-		if tonumber(stats[1]["health_before"]) < player:GetHealth() and tonumber(stats[1]["health"]) < player:GetMaxHealth() then
-			set_stats(player, "health", stats[1]["health"] + 1)
-		end
-		player:SetHealth(tonumber(stats[1]["health"]) / (player:GetMaxHealth() / 20))
+		add_magic_regeneration(player, 1, stats)
+		add_health_regeneration(player, stats)
 		counter = 75
-		set_stats(player, "health_before", player:GetHealth())
 		player:SendAboveActionBarMessage("Health: " .. stats[1]["health"] .. " / " .. player:GetMaxHealth() .. " | Magic: " .. stats[1]["magic"] .. " / " .. stats[1]["magic_max"] .. " | lvl: " .. calc_level(stats[1]["exp"]) .. " | exp: " .. stats[1]["exp"] .. " / " .. calc_exp_to_level(calc_level(stats[1]["exp"]) + 1))
 	end
 	counter = counter + 1
@@ -372,7 +393,7 @@ end
 function calc_available_skill_points(player)
 	-- calculate not given skill points
 	local stats = get_stats(player)
-	local available_points = tonumber(stats[1]["skillpoints"]) + 5 - (tonumber(stats[1]["strength"]) + tonumber(stats[1]["endurance"]) + tonumber(stats[1]["intelligence"]) + tonumber(stats[1]["agility"]) + tonumber(stats[1]["luck"]))
+	local available_points = calc_level(tonumber(stats[1]["exp"])) + 4 - (tonumber(stats[1]["strength"]) + tonumber(stats[1]["endurance"]) + tonumber(stats[1]["intelligence"]) + tonumber(stats[1]["agility"]) + tonumber(stats[1]["luck"]))
 	return available_points
 end
 
