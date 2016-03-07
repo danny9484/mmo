@@ -33,20 +33,33 @@ function Initialize(Plugin)
 
 	-- read Config
 
-	--local IniFile = cIniFile();
-	--if (IniFile:ReadFile(PLUGIN:GetLocalFolder() .. "/config.ini")) then
-	--	exp_multiplicator = IniFile("Settings", "exp_multiplicator")
-	--	battlelog_default = IniFile("Settings", "battlelog_default")
-	--	statusbar = IniFile("Settings", "statusbar")
-	--	    while IniFile:GetValue("Spells", tostring(spell_counter)) ~= "" do
-	--      Messages[spell_counter] = IniFile:GetValue("Spells", tostring(spell_counter))
-	--      LOG(Plugin:GetName() .. ": Spell Initialized: " .. Messages[spell_counter])
-	--      spell_counter = spell_counter + 1
-	--    end
-	--else
-	--  LOG("can't read config.ini")
-	--  return false
-	--end
+	local IniFile = cIniFile();
+	if (IniFile:ReadFile(PLUGIN:GetLocalFolder() .. "/config.ini")) then
+		exp_multiplicator = IniFile:GetValue("Settings", "exp_multiplicator")
+		battlelog_default = IniFile:GetValue("Settings", "battlelog_default")
+		statusbar = IniFile:GetValue("Settings", "statusbar")
+		    while IniFile:GetValue("Spells", tostring(spell_counter)) ~= "" do
+	      spells[spell_counter] = IniFile:GetValue("Spells", tostring(spell_counter))
+				local IniFile_spell = cIniFile();
+				if IniFile_spell:ReadFile(PLUGIN:GetLocalFolder() .. "/spells/" .. spells[spell_counter] .. "/Info.ini") then
+					local name = spells[spell_counter]
+					spells[spell_counter] = {}
+					spells[spell_counter]["name"] = name
+					spells[spell_counter]["author"] = IniFile_spell:GetValue("Spell", "Author")
+					spells[spell_counter]["description_en"] = IniFile_spell:GetValue("Spell", "Description_en")
+					spells[spell_counter]["magic"] = IniFile_spell:GetValue("Spell", "Magic")
+					spells[spell_counter]["cooldown"] = IniFile_spell:GetValue("Spell", "Cooldown")
+					spells[spell_counter]["cast_time"] = IniFile_spell:GetValue("Spell", "Casttime")
+	      	LOG(Plugin:GetName() .. ": Spell Initialized: " .. spells[spell_counter]["name"])
+				else
+					LOG(spells[spell_counter] .. ": Spell Initialization failed")
+				end
+	      spell_counter = spell_counter + 1
+	    end
+	else
+	  LOG(Plugin:GetName() .. ": can't read config.ini")
+	  return false
+	end
 
 	-- Use the InfoReg shared library to process the Info.lua file:
 	dofile(cPluginManager:GetPluginsPath() .. "/InfoReg.lua")
@@ -125,64 +138,24 @@ function save_player(player)
 end
 
 function spell(command, player)
-	--TODO add more spells like invisible, shield, fireball, summon golem?, summon meat, freeze, teleportation(fast but near(1 magic per block), 20s wait but wherever you want), summon taimed wolf
+ local counter = spell_counter - 1
 	if #command == 1 then
-		player:SendMessage("/spell heal <player> | 100M | heal a player")
-		player:SendMessage("/spell revive <player> | 500M | teleport a died player back")
-		return true
-	end
-	if #command == 2 then
-		if command[2] == "heal" and rem_magic(player, 100) then
-			local stats = get_stats(player)
-			if tonumber(stats[1]["health"]) + 5 > player:GetMaxHealth() then
-				set_stats(player, "health", player:GetMaxHealth())
-			else
-				set_stats(player, "health", tonumber(stats[1]["health"]) + 5)
-			end
-			send_battlelog(player, "you have been healed")
+		while counter ~= 0 do
+			player:SendMessage("/" .. spells[counter]["name"] .. " | " .. spells[counter]["description_en"] .. " | Magic: " .. spells[counter]["magic"])
+			counter = counter - 1
 		end
 		return true
 	end
-	if #command == 3 then
-		if command[2] == "heal" then -- start heal
-			local heal_player = function(player)
-				local stats = get_stats(player)
-				if tonumber(stats[1]["health"]) + 5 > player:GetMaxHealth() then
-					set_stats(player, "health", player:GetMaxHealth())
-				else
-					set_stats(player, "health", tonumber(stats[1]["health"]) + 5)
-				end
-				send_battlelog(player, "you have been healed")
-			end
-			if rem_magic(player, 10) then
-				if cRoot:Get():FindAndDoWithPlayer(command[3], heal_player) then
-					send_battlelog(player, "you healed " .. command[3])
-				else
-					send_battlelog(player, "can't heal " .. command[3] .. ", Player not found.")
+	if #command >= 2 then
+		counter = spell_counter - 1
+		while counter ~= 0 do
+			if command[2] == spells[counter]["name"] then
+				if rem_magic(player, tonumber(spells[counter]["magic"])) then
+					assert(loadfile(PLUGIN:GetLocalFolder() .. "/spells/" .. spells[counter]["name"] .. "/" .. spells[counter]["name"] .. ".lua"))(command, player)
 				end
 			end
-			return true
-		end	-- end Heal
-		if command[2] == "revive" then -- start revive TODO ask for revive and add casting time
-			if command[2] == player:GetName() then
-				player:SendMessage("you can't revive yourself")
-			end
-			local revive_player = function(player)
-				local stats = get_stats(player)
-				player:SetInvulnerableTicks(500)
-				player:SetPosX(stats[1]["last_killedx"])
-				player:SetPosY(stats[1]["last_killedy"])
-				player:SetPosZ(stats[1]["last_killedz"])
-				send_battlelog(player, "you have been revived")
-			end
-			if rem_magic(player, 50) then
-				if cRoot:Get():FindAndDoWithPlayer(command[3], revive_player) then
-					send_battlelog(player, "you revived " .. command[3])
-				else
-					send_battlelog(player, "can't revive " .. command[3] .. ", Player not found.")
-				end
-			end
-		end	-- end revive
+			counter = counter - 1
+		end
 	end
 	return true
 end
@@ -202,7 +175,7 @@ function rem_magic(player, amount)
 end
 
 function add_magic_regeneration(player, percentage, stats)
-	if tonumber(stats[1]["magic"]) < tonumber(stats[1]["magic_max"]) then -- this Workaround doesn't really make sense
+	if tonumber(stats[1]["magic"]) < tonumber(stats[1]["magic_max"]) then
 		local magic_after = stats[1]["magic"] + math.floor(stats[1]["magic_max"] * percentage / 10) / 10
 		set_stats(player, "magic", magic_after)
 		end
