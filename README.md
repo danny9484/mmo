@@ -14,6 +14,8 @@ just add the Plugin in your Servers Plugin Folder and Activate it.
 
 /battlelog | to turn on/off the battlelog (messages from mmo)
 
+/statusbar | to turn on/off the statusbar
+
 /mmo join <fraction> | join the horde or the alliance
 
 # Permissions:
@@ -23,5 +25,7 @@ mmo.spell
 mmo.skills
 
 mmo.battlelog
+
+mmo.statusbar
 
 mmo.join
