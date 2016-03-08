@@ -1,5 +1,5 @@
-#	command[2] in this case is heal and command[3] should be a player
-# player is the playerobject
+--	command[2] in this case is heal and command[3] should be a player
+-- player is the playerobject
 
 command, player = ...
 	if #command == 2 then
