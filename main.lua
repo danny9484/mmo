@@ -170,6 +170,9 @@ function dospell(command, player, cooldown, cast_time, counter)
 		cast_time_player[player:GetName()]["player"] = player
 		cast_time_player[player:GetName()]["counter"] = counter
 		cast_time_player[player:GetName()]["cooldown"] = cooldown
+		cast_time_player[player:GetName()]["positionx"] = player:GetPosX()
+		cast_time_player[player:GetName()]["positiony"] = player:GetPosY()
+		cast_time_player[player:GetName()]["positionz"] = player:GetPosZ()
 		return true
 	end
 	if cooldown_player[player:GetName()] == nil then
@@ -241,7 +244,6 @@ function MyOnWorldTick(World, TimeDelta)
 		add_health_regeneration(player, stats)
 		if cast_time_player[player:GetName()] == nil then
 			cast_time_player[player:GetName()] = {}
-
 		end
 		if cast_time_player[player:GetName()]["cast_time"] == nil then
 			cast_time_player[player:GetName()]["cast_time"] = 0
@@ -249,6 +251,10 @@ function MyOnWorldTick(World, TimeDelta)
 		if cast_time_player[player:GetName()]["cast_time"] > 0 then
 			cast_time_player[player:GetName()]["cast_time"] = cast_time_player[player:GetName()]["cast_time"] - 1
 			if cast_time_player[player:GetName()]["cast_time"] == 0 then
+				if cast_time_player[player:GetName()]["positionx"] ~= player:GetPosX() and cast_time_player[player:GetName()]["positiony"] ~= player:GetPosY() and cast_time_player[player:GetName()]["positionz"] ~= player:GetPosZ() then
+					player:SendMessage("Casting aborted!")
+					return true
+				end
 				player:SendMessage("Casting!")
 				dospell(cast_time_player[player:GetName()]["command"], cast_time_player[player:GetName()]["player"], cast_time_player[player:GetName()]["cooldown"], 0, cast_time_player[player:GetName()]["counter"])
 			end
