@@ -32,6 +32,7 @@ function Initialize(Plugin)
 	counter = 0
 	stats = {}
 	cooldown_player = {}
+	cast_time_player = {}
 
 	-- read Config
 
@@ -51,7 +52,7 @@ function Initialize(Plugin)
 					spells[spell_counter]["description_en"] = IniFile_spell:GetValue("Spell", "Description_en")
 					spells[spell_counter]["magic"] = IniFile_spell:GetValue("Spell", "Magic")
 					spells[spell_counter]["cooldown"] = IniFile_spell:GetValue("Spell", "Cooldown")
-					spells[spell_counter]["cast_time"] = IniFile_spell:GetValue("Spell", "Casttime")
+					spells[spell_counter]["cast_time"] = IniFile_spell:GetValue("Spell", "Cast_time")
 	      	LOG(Plugin:GetName() .. ": Spell Initialized: " .. spells[spell_counter]["name"] .. " by " .. spells[spell_counter]["author"])
 				else
 					LOG(spells[spell_counter] .. ": Spell Initialization failed")
@@ -162,6 +163,15 @@ function spell(command, player)
 end
 
 function dospell(command, player, cooldown, cast_time, counter)
+	if cast_time > 0 and check_magic(player, tonumber(spells[counter]["magic"])) then
+		player:SendMessage("Charging Spell, please wait")
+		cast_time_player[player:GetName()]["cast_time"] = cast_time
+		cast_time_player[player:GetName()]["command"] = command
+		cast_time_player[player:GetName()]["player"] = player
+		cast_time_player[player:GetName()]["counter"] = counter
+		cast_time_player[player:GetName()]["cooldown"] = cooldown
+		return true
+	end
 	if cooldown_player[player:GetName()] == nil then
 		cooldown_player[player:GetName()] = {}
 	end
@@ -179,6 +189,8 @@ function dospell(command, player, cooldown, cast_time, counter)
 		if cooldown_player[player:GetName()][counter][spells[counter]["cooldown"]] == 0 then
 			cooldown_player[player:GetName()][counter][spells[counter]["cooldown"]] = cooldown
 		end
+	else
+		send_battlelog(player, "not enough Magic!")
 	end
 end
 
@@ -189,7 +201,6 @@ function check_magic(player, amount)
 		local magic_after = tonumber(stats[1]["magic"]) - amount
 		return true
 	else
-		send_battlelog(player, "not enough Magic!")
 		return false
 	end
 end
@@ -228,8 +239,21 @@ function MyOnWorldTick(World, TimeDelta)
 		local stats = get_stats(player)
 		add_magic_regeneration(player, 1, stats)
 		add_health_regeneration(player, stats)
-		local i = spell_counter - 1
+		if cast_time_player[player:GetName()] == nil then
+			cast_time_player[player:GetName()] = {}
 
+		end
+		if cast_time_player[player:GetName()]["cast_time"] == nil then
+			cast_time_player[player:GetName()]["cast_time"] = 0
+		end
+		if cast_time_player[player:GetName()]["cast_time"] > 0 then
+			cast_time_player[player:GetName()]["cast_time"] = cast_time_player[player:GetName()]["cast_time"] - 1
+			if cast_time_player[player:GetName()]["cast_time"] == 0 then
+				player:SendMessage("Casting!")
+				dospell(cast_time_player[player:GetName()]["command"], cast_time_player[player:GetName()]["player"], cast_time_player[player:GetName()]["cooldown"], 0, cast_time_player[player:GetName()]["counter"])
+			end
+		end
+		local i = spell_counter - 1
 		while i > 0 do
 			if cooldown_player[player:GetName()] == nil then
 				cooldown_player[player:GetName()] = {}
@@ -238,10 +262,16 @@ function MyOnWorldTick(World, TimeDelta)
 				cooldown_player[player:GetName()][i] = {}
 				cooldown_player[player:GetName()][i][spells[i]["cooldown"]] = 0
 			end
+			if cooldown_player[player:GetName()][i]["cooldown_before"] == 1 then
+				player:SendMessage(spells[i]["name"] .. ": cooled down")
+				cooldown_player[player:GetName()][i]["cooldown_before"] = 0
+			end
 			if cooldown_player[player:GetName()][i][spells[i]["cooldown"]] > 0 then
 				cooldown_player[player:GetName()][i][spells[i]["cooldown"]] = cooldown_player[player:GetName()][i][spells[i]["cooldown"]] - 1
 				if cooldown_player[player:GetName()][i][spells[i]["cooldown"]] == 0 then
-					player:SendMessage(spells[i]["name"] .. ": cooled down")
+				end
+				if cooldown_player[player:GetName()][i][spells[i]["cooldown"]] == 0 then
+					cooldown_player[player:GetName()][i]["cooldown_before"] = 1
 				end
 			end
 			i = i - 1
