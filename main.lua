@@ -251,7 +251,7 @@ function MyOnWorldTick(World, TimeDelta)
 		end
 		if cast_time_player[player:GetName()]["cast_time"] > 0 then
 			cast_time_player[player:GetName()]["cast_time"] = cast_time_player[player:GetName()]["cast_time"] - 1
-			if cast_time_player[player:GetName()]["positionx"] ~= player:GetPosX() and cast_time_player[player:GetName()]["positiony"] ~= player:GetPosY() and cast_time_player[player:GetName()]["positionz"] ~= player:GetPosZ() then
+			if cast_time_player[player:GetName()]["positionx"] ~= player:GetPosX() or cast_time_player[player:GetName()]["positiony"] ~= player:GetPosY() or cast_time_player[player:GetName()]["positionz"] ~= player:GetPosZ() then
 				send_battlelog(player, "Casting aborted!")
 				cast_time_player[player:GetName()]["cast_time"] = 0
 				return true
