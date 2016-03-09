@@ -166,10 +166,14 @@ function dospell(command, player, cooldown, cast_time, counter)
 	if cast_time > 0 and check_magic(player, tonumber(spells[counter]["magic"])) then
 		player:SendMessage("Charging Spell, please wait")
 		cast_time_player[player:GetName()]["cast_time"] = cast_time
+		cast_time_player[player:GetName()]["cast_time_max"] = cast_time
 		cast_time_player[player:GetName()]["command"] = command
 		cast_time_player[player:GetName()]["player"] = player
 		cast_time_player[player:GetName()]["counter"] = counter
 		cast_time_player[player:GetName()]["cooldown"] = cooldown
+		cast_time_player[player:GetName()]["positionx"] = player:GetPosX()
+		cast_time_player[player:GetName()]["positiony"] = player:GetPosY()
+		cast_time_player[player:GetName()]["positionz"] = player:GetPosZ()
 		return true
 	end
 	if cooldown_player[player:GetName()] == nil then
@@ -241,15 +245,19 @@ function MyOnWorldTick(World, TimeDelta)
 		add_health_regeneration(player, stats)
 		if cast_time_player[player:GetName()] == nil then
 			cast_time_player[player:GetName()] = {}
-
 		end
 		if cast_time_player[player:GetName()]["cast_time"] == nil then
 			cast_time_player[player:GetName()]["cast_time"] = 0
 		end
 		if cast_time_player[player:GetName()]["cast_time"] > 0 then
 			cast_time_player[player:GetName()]["cast_time"] = cast_time_player[player:GetName()]["cast_time"] - 1
+			if cast_time_player[player:GetName()]["positionx"] ~= player:GetPosX() and cast_time_player[player:GetName()]["positiony"] ~= player:GetPosY() and cast_time_player[player:GetName()]["positionz"] ~= player:GetPosZ() then
+				send_battlelog(player, "Casting aborted!")
+				cast_time_player[player:GetName()]["cast_time"] = 0
+				return true
+			end
 			if cast_time_player[player:GetName()]["cast_time"] == 0 then
-				player:SendMessage("Casting!")
+				send_battlelog(player, "Casting!")
 				dospell(cast_time_player[player:GetName()]["command"], cast_time_player[player:GetName()]["player"], cast_time_player[player:GetName()]["cooldown"], 0, cast_time_player[player:GetName()]["counter"])
 			end
 		end
@@ -277,7 +285,22 @@ function MyOnWorldTick(World, TimeDelta)
 			i = i - 1
 		end
 		counter = 75
-		if stats[1]["statusbar"] == "1" then
+		if stats[1]["statusbar"] == "1" and cast_time_player[player:GetName()]["cast_time"] ~= 0 then
+			local bar_range = 40
+			local load = bar_range / (cast_time_player[player:GetName()]["cast_time_max"] / cast_time_player[player:GetName()]["cast_time"])
+			local load_message = ""
+			local load_a = bar_range - load
+			while load_a > 0 do
+				load_message = "#" .. load_message
+				load_a = load_a - 1
+			end
+			while load > 0 do
+				load_message = load_message .. "-"
+				load = load - 1
+			end
+			player:SendAboveActionBarMessage("[" .. load_message .. "]")
+		end
+		if stats[1]["statusbar"] == "1" and cast_time_player[player:GetName()]["cast_time"] == 0 then
 			player:SendAboveActionBarMessage("Health: " .. stats[1]["health"] .. " / " .. player:GetMaxHealth() .. " | Magic: " .. stats[1]["magic"] .. " / " .. stats[1]["magic_max"] .. " | lvl: " .. calc_level(stats[1]["exp"]) .. " | exp: " .. stats[1]["exp"] .. " / " .. calc_exp_to_level(calc_level(stats[1]["exp"]) + 1))
 		end
 	end
