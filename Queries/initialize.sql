@@ -1,5 +1,6 @@
 CREATE TABLE IF NOT EXISTS "mmo" (
 	`id`	INTEGER PRIMARY KEY,
+	`name` TEXT,
 	`exp` INTEGER,
 	`health` INTEGER,
 	`health_before` INTEGER,
@@ -18,6 +19,7 @@ CREATE TABLE IF NOT EXISTS "mmo" (
 
 CREATE TABLE IF NOT EXISTS "temptable" (
 	`id`	INTEGER PRIMARY KEY,
+	`name` TEXT,
 	`exp` INTEGER,
 	`health` INTEGER,
 	`health_before` INTEGER,
@@ -39,6 +41,7 @@ INSERT INTO "temptable" SELECT DISTINCT * FROM "mmo" GROUP BY `id`;
 DROP TABLE "mmo";
 CREATE TABLE IF NOT EXISTS "mmo" (
 	`id`	INTEGER PRIMARY KEY,
+	`name` TEXT,
 	`exp` INTEGER,
 	`health` INTEGER,
 	`health_before` INTEGER,

@@ -24,6 +24,7 @@ function Initialize(Plugin)
 
 	-- Database stuff
 	--db = cSQLiteHandler("mmo.sqlite")
+	g_Storage = cSQLiteStorage:new()
 	create_database()
 
 	-- declare global variables
@@ -31,6 +32,7 @@ function Initialize(Plugin)
 	spells = {}
 	counter = 0
 	stats = {}
+	stats[1] = {}
 	cooldown_player = {}
 	cast_time_player = {}
 
@@ -111,7 +113,7 @@ end
 
 function save_player(player)
 	local stats = get_stats(player)
-	local Success, ErrorMsg = self:ExecuteCommand("register_new_player",
+	g_Storage:ExecuteCommand("save_player",
 		{
 			player_name = stats[1][player:GetName()]["name"],
 			exp = stats[1][player:GetName()]["exp"],
@@ -126,11 +128,12 @@ function save_player(player)
 			battlelog = stats[1][player:GetName()]["battlelog"],
 			statusbar = stats[1][player:GetName()]["statusbar"],
 			magic = stats[1][player:GetName()]["magic"],
-			magic_max = stats[1][player:GetName()]["magic_max"]
+			magic_max = stats[1][player:GetName()]["magic_max"],
+			fraction = stats[1][player:GetName()]["fraction"]
 		}
 	)
 	if stats[1]["last_killedx"] ~= nil and stats[1]["last_killedy"] ~= nil and stats[1]["last_killedz"] ~= nil then
-		local Success, ErrorMsg = self:ExecuteCommand("update_last_killed.sql",
+		g_Storage:ExecuteCommand("update_last_killed.sql",
 			{
 				last_killedx = stats[1][player:GetName()]["last_killedx"],
 				last_killedy = stats[1][player:GetName()]["last_killedy"],
@@ -376,14 +379,15 @@ function show_stats (Player)
 end
 
 function get_stats_initialize(Player)
-	cSQLiteStorage:Get():ExecuteCommand("initialize_player",
+	g_Storage:ExecuteCommand("initialize_player",
 	{
-		player_name = Player:GetName()
+		player_name = Player:GetName();
 	},
 	function(stats_sql)
-		stats[1][Player:GetName()] = stats_sql
+		stats[1][Player:GetName()] = stats_sql;
+		return true
 	end
-)
+	)
 	return stats
 end
 
@@ -392,10 +396,7 @@ function set_stats(player, stat, amount)
 end
 
 function get_stats(player)
-	if stats == nil then
-		stats[player:GetName()] = get_stats_initialize(player)
-	end
-	if stats[player:GetName()] == nil then
+	if stats == nil or stats[player:GetName()] == nil then
 		stats[player:GetName()] = get_stats_initialize(player)
 	end
 	return stats[player:GetName()]
@@ -415,22 +416,22 @@ end
 
 function register_new_player(Player)
 	-- register new player in database
-	local Success, ErrorMsg = self:ExecuteCommand("register_new_player",
+	g_Storage:ExecuteCommand("register_new_player",
 		{
 			player_name = Player:GetName(),
-			exp = 0,
-			health = 20,
-			health_before = 20,
-			strength = 1,
-			agility = 1,
-			luck = 1,
-			intelligence = 1,
-			ednruance = 1,
-			skillpoints = 0,
-			battlelog = battlelog_default,
-			statusbar = statusbar_default,
-			magic = 100,
-			magic_max = 100
+		  exp = 0,
+		  health = 20,
+		  health_before = 20,
+		  strength = 1,
+		  agility = 1,
+		  luck = 1,
+		  intelligence = 1,
+		  magic = 100,
+		  magic_max = 100,
+			endurance = 1,
+		  skillpoints = 0,
+		  battlelog = battlelog_default,
+		  statusbar = statusbar_default
 		}
 	)
 	stats[Player:GetName()][1] = {}
