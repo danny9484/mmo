@@ -1,3 +1,8 @@
+local E_DIRECTION_NORTH1 = 0
+local E_DIRECTION_NORTH2 = 4
+local E_DIRECTION_EAST = 1
+local E_DIRECTION_SOUTH = 2
+local E_DIRECTION_WEST = 3
 local function Round(a_Number)
 	assert(type(a_Number) == 'number')
 
