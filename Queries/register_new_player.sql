@@ -1,4 +1,4 @@
-INSERT INTO mmo (
+INSERT INTO "mmo" (
   name,
   exp,
   health,
@@ -29,4 +29,4 @@ VALUES (
   $skillpoints,
   $battlelog,
   $statusbar
-);
+)
