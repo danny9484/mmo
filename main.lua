@@ -23,7 +23,7 @@ function Initialize(Plugin)
 	cPluginManager.BindCommand("/mmo", "mmo.join", mmo_join, " ~ join a fraction")
 
 	-- Database stuff
-	db = cSQLiteHandler("mmo.sqlite")
+	--db = cSQLiteHandler("mmo.sqlite")
 	create_database()
 
 	-- declare global variables
@@ -111,33 +111,32 @@ end
 
 function save_player(player)
 	local stats = get_stats(player)
-	local updateList = cUpdateList()
-	:Update("name", stats[1]["name"])
-	:Update("exp", stats[1]["exp"])
-	:Update("health", stats[1]["health"])
-	:Update("health_before", stats[1]["health_before"])
-	:Update("strength", stats[1]["strength"])
-	:Update("agility", stats[1]["agility"])
-	:Update("luck", stats[1]["luck"])
-	:Update("intelligence", stats[1]["intelligence"])
-	:Update("magic", stats[1]["magic"])
-	:Update("magic_max", stats[1]["magic_max"])
-	:Update("endurance", stats[1]["endurance"])
-	:Update("skillpoints", calc_available_skill_points(player))
-	:Update("battlelog", stats[1]["battlelog"])
-	:Update("statusbar", stats[1]["statusbar"])
-	:Update("fraction", stats[1]["fraction"])
-	local whereList = cWhereList()
-	:Where("name", player:GetName())
-	local res = db:Update("mmo", updateList, whereList)
+	local Success, ErrorMsg = self:ExecuteCommand("register_new_player",
+		{
+			player_name = stats[1][player:GetName()]["name"],
+			exp = stats[1][player:GetName()]["exp"],
+			health = stats[1][player:GetName()]["health"],
+			health_before = stats[1][player:GetName()]["health_before"],
+			strength = stats[1][player:GetName()]["strength"],
+			agility = stats[1][player:GetName()]["agility"],
+			luck = stats[1][player:GetName()]["luck"],
+			intelligence = stats[1][player:GetName()]["intelligence"],
+			endurance = stats[1][player:GetName()]["endurance"],
+			skillpoints = stats[1][player:GetName()]["skillpoints"],
+			battlelog = stats[1][player:GetName()]["battlelog"],
+			statusbar = stats[1][player:GetName()]["statusbar"],
+			magic = stats[1][player:GetName()]["magic"],
+			magic_max = stats[1][player:GetName()]["magic_max"]
+		}
+	)
 	if stats[1]["last_killedx"] ~= nil and stats[1]["last_killedy"] ~= nil and stats[1]["last_killedz"] ~= nil then
-		local updateList = cUpdateList()
-		:Update("last_killedx", stats[1]["last_killedx"])
-		:Update("last_killedy", stats[1]["last_killedy"])
-		:Update("last_killedz", stats[1]["last_killedz"])
-		local whereList = cWhereList()
-		:Where("name", player:GetName())
-		local res = db:Update("mmo", updateList, whereList)
+		local Success, ErrorMsg = self:ExecuteCommand("update_last_killed.sql",
+			{
+				last_killedx = stats[1][player:GetName()]["last_killedx"],
+				last_killedy = stats[1][player:GetName()]["last_killedy"],
+				last_killedz = stats[1][player:GetName()]["last_killedz"]
+			}
+		)
 	end
 end
 
@@ -377,10 +376,15 @@ function show_stats (Player)
 end
 
 function get_stats_initialize(Player)
-	local whereList = cWhereList()
-	:Where("name", Player:GetName())
-	local res = db:Select("mmo", "*", whereList)
-	return res
+	cSQLiteStorage:Get():ExecuteCommand("initialize_player",
+	{
+		player_name = Player:GetName()
+	},
+	function(stats_sql)
+		stats[1][Player:GetName()] = stats_sql
+	end
+)
+	return stats
 end
 
 function set_stats(player, stat, amount)
@@ -394,8 +398,7 @@ function get_stats(player)
 	if stats[player:GetName()] == nil then
 		stats[player:GetName()] = get_stats_initialize(player)
 	end
-	res = stats[player:GetName()]
-	return res
+	return stats[player:GetName()]
 end
 
 function checkifexist(Player)
@@ -412,22 +415,24 @@ end
 
 function register_new_player(Player)
 	-- register new player in database
-	local insertList = cInsertList()
-	:Insert("name", Player:GetName())
-	:Insert("exp", 0)
-	:Insert("health", 20)
-	:Insert("health_before", 20)
-	:Insert("strength", 1)
-	:Insert("agility", 1)
-	:Insert("luck", 1)
-	:Insert("intelligence", 1)
-	:Insert("magic", 100)
-	:Insert("magic_max", 100)
-	:Insert("endurance", 1)
-	:Insert("skillpoints", 0)
-	:Insert("battlelog", battlelog_default)
-	:Insert("statusbar", statusbar_default)
-	local res = db:Insert("mmo", insertList)
+	local Success, ErrorMsg = self:ExecuteCommand("register_new_player",
+		{
+			player_name = Player:GetName(),
+			exp = 0,
+			health = 20,
+			health_before = 20,
+			strength = 1,
+			agility = 1,
+			luck = 1,
+			intelligence = 1,
+			ednruance = 1,
+			skillpoints = 0,
+			battlelog = battlelog_default,
+			statusbar = statusbar_default,
+			magic = 100,
+			magic_max = 100
+		}
+	)
 	stats[Player:GetName()][1] = {}
 	set_stats(Player, "name", Player:GetName())
 	set_stats(Player, "exp", 0)
@@ -641,27 +646,6 @@ end
 
 function create_database()
 -- Create DB if not exists
-local db = cSQLiteHandler("mmo.sqlite",
-	cTable("mmo")
-	:Field("ID", "INTEGER", "PRIMARY KEY AUTOINCREMENT")
-	:Field("name", "TEXT")
-	:Field("exp","INTEGER")
-	:Field("health", "INTEGER")
-	:Field("health_before", "INTEGER")
-	:Field("strength","INTEGER")
-	:Field("agility","INTEGER")
-	:Field("luck","INTEGER")
-	:Field("intelligence","INTEGER")
-	:Field("magic","INTEGER")
-	:Field("magic_max","INTEGER")
-	:Field("endurance","INTEGER")
-	:Field("skillpoints","INTEGER")
-	:Field("battlelog","INTEGER")
-	:Field("statusbar", "INTEGER")
-	:Field("fraction","TEXT")
-	:Field("last_killedx", "INTEGER")
-	:Field("last_killedy", "INTEGER")
-	:Field("last_killedz", "INTEGER")
-)
+	cSQLiteStorage:new()
   return true
 end
