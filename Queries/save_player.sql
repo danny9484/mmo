@@ -12,4 +12,5 @@ UPDATE mmo SET endurance=$endurance WHERE name=$player_name;
 UPDATE mmo SET skillpoints=$skillpoints WHERE name=$player_name;
 UPDATE mmo SET battlelog=$battlelog WHERE name=$player_name;
 UPDATE mmo SET statusbar=$statusbar WHERE name=$player_name;
-UPDATE mmo SET fraction=$fraction WHERE name=$player_name
+UPDATE mmo SET fraction=$fraction WHERE name=$player_name;
+UPDATE mmo SET level=$level WHERE name=$player_name

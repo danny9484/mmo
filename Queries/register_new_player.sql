@@ -12,7 +12,8 @@ INSERT INTO "mmo" (
   endurance,
   skillpoints,
   battlelog,
-  statusbar
+  statusbar,
+  level
 )
 VALUES (
   $player_name,
@@ -28,5 +29,6 @@ VALUES (
   $endurance,
   $skillpoints,
   $battlelog,
-  $statusbar
+  $statusbar,
+  $level
 )

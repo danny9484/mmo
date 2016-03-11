@@ -14,7 +14,8 @@ CREATE TABLE IF NOT EXISTS "mmo" (
 	`skillpoints` INTEGER,
 	`battlelog` INTEGER,
 	`statusbar` INTEGER,
-	`fraction` INTEGER
+	`fraction` INTEGER,
+	`level` INTEGER
 );
 
 CREATE TABLE IF NOT EXISTS "temptable" (
@@ -33,7 +34,8 @@ CREATE TABLE IF NOT EXISTS "temptable" (
 	`skillpoints` INTEGER,
 	`battlelog` INTEGER,
 	`statusbar` INTEGER,
-	`fraction` INTEGER
+	`fraction` INTEGER,
+	`level` INTEGER
 );
 
 INSERT INTO "temptable" SELECT DISTINCT * FROM "mmo" GROUP BY `id`;
@@ -55,7 +57,8 @@ CREATE TABLE IF NOT EXISTS "mmo" (
 	`skillpoints` INTEGER,
 	`battlelog` INTEGER,
 	`statusbar` INTEGER,
-	`fraction` INTEGER
+	`fraction` INTEGER,
+	`level` INTEGER
 );
 INSERT INTO "mmo" SELECT * FROM "temptable";
 DROP TABLE "temptable"
