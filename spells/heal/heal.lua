@@ -5,7 +5,7 @@ command, player = ...
 	if #command == 2 then
 		if command[2] == "heal" then
 			local stats = get_stats(player)
-			if tonumber(stats[1]["health"]) + 5 > player:GetMaxHealth() then
+			if tonumber(stats["health"]) + 5 > player:GetMaxHealth() then
   			set_stats(player, "health", player:GetMaxHealth())
 			else
 				set_stats(player, "health", tonumber(stats[1]["health"]) + 5)
@@ -18,7 +18,7 @@ command, player = ...
 		if command[2] == "heal" then -- start heal
 			local heal_player = function(player)
 				local stats = get_stats(player)
-				if tonumber(stats[1]["health"]) + 5 > player:GetMaxHealth() then
+				if tonumber(stats[player:GetName()]["health"]) + 5 > player:GetMaxHealth() then
 					set_stats(player, "health", player:GetMaxHealth())
 				else
 					set_stats(player, "health", tonumber(stats[1]["health"]) + 5)

@@ -24,7 +24,6 @@ function Initialize(Plugin)
 	spells = {}
 	counter = 0
 	stats = {}
-	stats[1] = {}
 	cooldown_player = {}
 	cast_time_player = {}
 
@@ -86,7 +85,7 @@ end
 
 function mmo_join(command, player)
 	local stats = get_stats(player)
-	if stats[1]["fraction"] == nil or stats[1]["fraction"] == "" then
+	if stats[player:GetName()]["fraction"] == nil or stats[player:GetName()]["fraction"] == "" then
 		if command[3] == "horde" then
 			set_stats(player, "fraction", "alliance")
 			player:SendMessage("You joined the Horde")
@@ -98,7 +97,7 @@ function mmo_join(command, player)
 			return true
 		end
 	end
-	if stats[1]["fraction"] ~= "" then
+	if stats[player:GetName()]["fraction"] ~= "" then
 		player:SendMessage("You already joined a Fraction")
 		return true
 	end
@@ -110,30 +109,30 @@ function save_player(player)
 	local stats = get_stats(player)
 	g_Storage:ExecuteCommand("save_player",
 		{
-			player_name = stats[1]["name"],
-			exp = stats[1]["exp"],
-			health = stats[1]["health"],
-			health_before = stats[1]["health_before"],
-			strength = stats[1]["strength"],
-			agility = stats[1]["agility"],
-			luck = stats[1]["luck"],
-			intelligence = stats[1]["intelligence"],
-			endurance = stats[1]["endurance"],
-			skillpoints = stats[1]["skillpoints"],
-			battlelog = stats[1]["battlelog"],
-			statusbar = stats[1]["statusbar"],
-			magic = stats[1]["magic"],
-			magic_max = stats[1]["magic_max"],
-			fraction = stats[1]["fraction"],
-			level = stats[1]["level"]
+			player_name = stats[player:GetName()]["name"],
+			exp = stats[player:GetName()]["exp"],
+			health = stats[player:GetName()]["health"],
+			health_before = stats[player:GetName()]["health_before"],
+			strength = stats[player:GetName()]["strength"],
+			agility = stats[player:GetName()]["agility"],
+			luck = stats[player:GetName()]["luck"],
+			intelligence = stats[player:GetName()]["intelligence"],
+			endurance = stats[player:GetName()]["endurance"],
+			skillpoints = stats[player:GetName()]["skillpoints"],
+			battlelog = stats[player:GetName()]["battlelog"],
+			statusbar = stats[player:GetName()]["statusbar"],
+			magic = stats[player:GetName()]["magic"],
+			magic_max = stats[player:GetName()]["magic_max"],
+			fraction = stats[player:GetName()]["fraction"],
+			level = stats[player:GetName()]["level"]
 		}
 	)
-	if stats[1]["last_killedx"] ~= nil and stats[1]["last_killedy"] ~= nil and stats[1]["last_killedz"] ~= nil then
+	if stats[player:GetName()]["last_killedx"] ~= nil and stats[player:GetName()]["last_killedy"] ~= nil and stats[player:GetName()]["last_killedz"] ~= nil then
 		g_Storage:ExecuteCommand("update_last_killed.sql",
 			{
-				last_killedx = stats[1]["last_killedx"],
-				last_killedy = stats[1]["last_killedy"],
-				last_killedz = stats[1]["last_killedz"]
+				last_killedx = stats[player:GetName()]["last_killedx"],
+				last_killedy = stats[player:GetName()]["last_killedy"],
+				last_killedz = stats[player:GetName()]["last_killedz"]
 			}
 		)
 	end
@@ -200,8 +199,8 @@ end
 function check_magic(player, amount)
 	local stats = get_stats(player)
 
-	if tonumber(stats[1]["magic"]) >= amount then
-		local magic_after = tonumber(stats[1]["magic"]) - amount
+	if tonumber(stats[player:GetName()]["magic"]) >= amount then
+		local magic_after = tonumber(stats[player:GetName()]["magic"]) - amount
 		return true
 	else
 		return false
@@ -211,8 +210,8 @@ end
 function rem_magic(player, amount)
 	local stats = get_stats(player)
 
-	if tonumber(stats[1]["magic"]) >= amount then
-		local magic_after = tonumber(stats[1]["magic"]) - amount
+	if tonumber(stats[player:GetName()]["magic"]) >= amount then
+		local magic_after = tonumber(stats[player:GetName()]["magic"]) - amount
 		set_stats(player, "magic", magic_after)
 		return true
 	else
@@ -222,17 +221,17 @@ function rem_magic(player, amount)
 end
 
 function add_magic_regeneration(player, percentage, stats)
-	if tonumber(stats[1]["magic"]) < tonumber(stats[1]["magic_max"]) then
-		local magic_after = stats[1]["magic"] + math.floor(stats[1]["magic_max"] * percentage / 10) / 10
+	if tonumber(stats[player:GetName()]["magic"]) < tonumber(stats[player:GetName()]["magic_max"]) then
+		local magic_after = stats[player:GetName()]["magic"] + math.floor(stats[player:GetName()]["magic_max"] * percentage / 10) / 10
 		set_stats(player, "magic", magic_after)
 		end
 end
 
 function add_health_regeneration(player, stats)
-	if tonumber(stats[1]["health_before"]) < player:GetHealth() and tonumber(stats[1]["health"]) < player:GetMaxHealth() then
-		set_stats(player, "health", stats[1]["health"] + 1)
+	if tonumber(stats[player:GetName()]["health_before"]) < player:GetHealth() and tonumber(stats[player:GetName()]["health"]) < player:GetMaxHealth() then
+		set_stats(player, "health", stats[player:GetName()]["health"] + 1)
 	end
-	player:SetHealth(tonumber(stats[1]["health"]) / (player:GetMaxHealth() / 20))
+	player:SetHealth(tonumber(stats[player:GetName()]["health"]) / (player:GetMaxHealth() / 20))
 	set_stats(player, "health_before", player:GetHealth())
 end
 
@@ -285,7 +284,7 @@ function MyOnWorldTick(World, TimeDelta)
 			i = i - 1
 		end
 		counter = 75
-		if stats[1]["statusbar"] == 1 and cast_time_player[player_name]["cast_time"] ~= 0 then
+		if stats[player:GetName()]["statusbar"] == 1 and cast_time_player[player_name]["cast_time"] ~= 0 then
 			local bar_range = 40
 			local load = bar_range / (cast_time_player[player_name]["cast_time_max"] / cast_time_player[player_name]["cast_time"])
 			local load_message = ""
@@ -300,8 +299,8 @@ function MyOnWorldTick(World, TimeDelta)
 			end
 			player:SendAboveActionBarMessage("[" .. load_message .. "]")
 		end
-		if stats[1]["statusbar"] == 1 and cast_time_player[player_name]["cast_time"] == 0 then
-			player:SendAboveActionBarMessage("Health: " .. stats[1]["health"] .. " / " .. player:GetMaxHealth() .. " | Magic: " .. stats[1]["magic"] .. " / " .. stats[1]["magic_max"] .. " | lvl: " .. stats[1]["level"] .. " | exp: " .. stats[1]["exp"] .. " / " .. calc_exp_to_level(stats[1]["level"] + 1))
+		if stats[player:GetName()]["statusbar"] == 1 and cast_time_player[player_name]["cast_time"] == 0 then
+			player:SendAboveActionBarMessage("Health: " .. stats[player:GetName()]["health"] .. " / " .. player:GetMaxHealth() .. " | Magic: " .. stats[player:GetName()]["magic"] .. " / " .. stats[player:GetName()]["magic_max"] .. " | lvl: " .. stats[player:GetName()]["level"] .. " | exp: " .. stats[player:GetName()]["exp"] .. " / " .. calc_exp_to_level(stats[player:GetName()]["level"] + 1))
 		end
 	end
 	counter = counter + 1
@@ -318,12 +317,12 @@ end
 
 function battlelog(command, player)
 	local stats = get_stats(player)
-	if stats[1]["battlelog"] == 0 then
+	if stats[player:GetName()]["battlelog"] == 0 then
 		set_stats(player, "battlelog", 1)
 		player:SendMessage("turned Battlelog on")
 		return true
 	end
-	if stats[1]["battlelog"] == 1 then
+	if stats[player:GetName()]["battlelog"] == 1 then
 		set_stats(player, "battlelog", 0)
 		player:SendMessage("turned Battlelog off")
 		return true
@@ -332,12 +331,12 @@ end
 
 function statusbar(command, player)
 	local stats = get_stats(player)
-	if stats[1]["statusbar"] == 0 then
+	if stats[player:GetName()]["statusbar"] == 0 then
 		set_stats(player, "statusbar", 1)
 		player:SendMessage("turned Statusbar on")
 		return true
 	end
-	if stats[1]["statusbar"] == 1 then
+	if stats[player:GetName()]["statusbar"] == 1 then
 		set_stats(player, "statusbar", 0)
 		player:SendMessage("turned Statusbar off")
 		return true
@@ -353,23 +352,22 @@ function MyOnPlayerJoined(Player)
 	end
 	show_stats(Player)
 	local stats = get_stats(Player)
-	Player:SetMaxHealth(20 * (stats[1]["endurance"]))
+	Player:SetMaxHealth(20 * (stats[Player:GetName()]["endurance"]))
 end
 
 function show_stats (Player)
-	 local stats = get_stats(Player)
-	 Player:SendMessage("exp: " .. stats[1]["exp"])
-	 Player:SendMessage("Strength: " .. stats[1]["strength"])
-	 Player:SendMessage("Agility: " .. stats[1]["agility"])
-	 Player:SendMessage("Luck: " .. stats[1]["luck"])
-	 Player:SendMessage("Intelligence: " .. stats[1]["intelligence"])
-	 Player:SendMessage("Endurance: " .. stats[1]["endurance"])
-	 Player:SendMessage("Level: " .. stats[1]["level"])
-	 Player:SendMessage("Magic: " .. stats[1]["magic"] .. " of " .. stats[1]["magic_max"])
-	 if stats[1]["fraction"] == nil  or stats[1]["fraction"] == "" then
+	 Player:SendMessage("exp: " .. stats[Player:GetName()]["exp"])
+	 Player:SendMessage("Strength: " .. stats[Player:GetName()]["strength"])
+	 Player:SendMessage("Agility: " .. stats[Player:GetName()]["agility"])
+	 Player:SendMessage("Luck: " .. stats[Player:GetName()]["luck"])
+	 Player:SendMessage("Intelligence: " .. stats[Player:GetName()]["intelligence"])
+	 Player:SendMessage("Endurance: " .. stats[Player:GetName()]["endurance"])
+	 Player:SendMessage("Level: " .. stats[Player:GetName()]["level"])
+	 Player:SendMessage("Magic: " .. stats[Player:GetName()]["magic"] .. " of " .. stats[Player:GetName()]["magic_max"])
+	 if stats[Player:GetName()]["fraction"] == nil  or stats[Player:GetName()]["fraction"] == "" then
 	 	Player:SendMessage("Use /mmo join horde/alliance to join a fraction")
 	 else
-		Player:SendMessage("Fraction: " .. stats[1]["fraction"])
+		Player:SendMessage("Fraction: " .. stats[Player:GetName()]["fraction"])
 	 end
 	 if calc_available_skill_points(Player) ~= 0 then
 		 Player:SendMessage("Available Skillpoints: " .. calc_available_skill_points(Player))
@@ -382,22 +380,21 @@ function get_stats_initialize(Player)
 		player_name = Player:GetName();
 	},
 	function(stats_sql)
-		stats[1] = stats_sql;
-		return true
+		stats[Player:GetName()] = stats_sql
 	end
 	)
 	return stats
 end
 
 function set_stats(player, stat, amount)
-	stats[player:GetName()][1][stat] = amount
+	stats[player:GetName()][stat] = amount
 end
 
 function get_stats(player)
 	if stats == nil or stats[player:GetName()] == nil then
-		stats[player:GetName()] = get_stats_initialize(player)
+		stats = get_stats_initialize(player)
 	end
-	return stats[player:GetName()]
+	return stats
 end
 
 function checkifexist(Player)
@@ -462,7 +459,7 @@ function MyOnKilled(Victim, TDI)
 		local player = tolua.cast(TDI.Attacker, "cPlayer")
 		if TDI.Attacker ~= nil and Victim:IsPlayer() and TDI.Attacker:IsPlayer() then
 			local stats = get_stats(Victim)
-			exp = 25 * calc_level(stats[1]["exp"])
+			exp = 25 * calc_level(stats[player:GetName()]["exp"])
 			send_battlelog(player, "You killed a Player")
 		end
 		if (TDI.Attacker ~= nil and TDI.Attacker:IsPlayer() and Victim:IsMob()) then
@@ -487,7 +484,7 @@ function MyOnKilled(Victim, TDI)
 		if TDI.Attacker ~= nil and TDI.Attacker:IsPlayer() and give_exp(exp, player) then
 			local stats = get_stats(player) -- we need the current exp to calculate the new level
 			set_stats(player, "level", calc_level(stats["exp"]))
-			send_battlelog(player, "Level UP! you are now Level " .. stats[1]["level"])
+			send_battlelog(player, "Level UP! you are now Level " .. stats[player:GetName()]["level"])
 		end
 	end
 end
@@ -495,7 +492,7 @@ end
 function calc_available_skill_points(player)
 	-- calculate not given skill points
 	local stats = get_stats(player)
-	local available_points = stats[1]["level"] + 4 - (tonumber(stats[1]["strength"]) + tonumber(stats[1]["endurance"]) + tonumber(stats[1]["intelligence"]) + tonumber(stats[1]["agility"]) + tonumber(stats[1]["luck"]))
+	local available_points = stats[player:GetName()]["level"] + 4 - (tonumber(stats[player:GetName()]["strength"]) + tonumber(stats[player:GetName()]["endurance"]) + tonumber(stats[player:GetName()]["intelligence"]) + tonumber(stats[player:GetName()]["agility"]) + tonumber(stats[player:GetName()]["luck"]))
 	return available_points
 end
 
@@ -503,12 +500,12 @@ function add_skill(player, skillname)
 	-- add skill point to the given skill if skillpoints available
 	if calc_available_skill_points(player) > 0 then
 		local stats = get_stats(player)
-		set_stats(player, skillname[2], tonumber(stats[1][skillname[2]]) + 1)
+		set_stats(player, skillname[2], tonumber(stats[player:GetName()][skillname[2]]) + 1)
 		if skillname[2] == "endurance" then
 			player:SetMaxHealth(player:GetMaxHealth() + 20)
 		end
 		if skillname[2] == "intelligence" then
-			set_stats(player, "magic_max", stats[1]["magic_max"] + 100)
+			set_stats(player, "magic_max", stats[player:GetName()]["magic_max"] + 100)
 		end
 		return true
 	end
@@ -558,8 +555,8 @@ function MyOnTakeDamage(Receiver, TDI)
 	if TDI.Attacker ~= nil and TDI.Attacker:IsPlayer() then
 		local player = tolua.cast(TDI.Attacker, "cPlayer")
 		local stats = get_stats(player)
-		TDI.FinalDamage = TDI.FinalDamage / 5 * stats[1]["strength"]; -- lower damage to make better balance
-		if math.random(0,100) <= tonumber(stats[1]["luck"]) then
+		TDI.FinalDamage = TDI.FinalDamage / 5 * stats[player:GetName()]["strength"]; -- lower damage to make better balance
+		if math.random(0,100) <= tonumber(stats[player:GetName()]["luck"]) then
 			TDI.FinalDamage = TDI.FinalDamage * 2
 			send_battlelog(player, "You did a Critical Hit!")
 		end
@@ -573,7 +570,7 @@ function MyOnTakeDamage(Receiver, TDI)
 		local stats = get_stats(player)
 		if TDI.DamageType ~= 3 then
 			-- add dodge with LUCK and AGILITY
-			if math.random(0,100) < (tonumber(stats[1]["luck"]) + tonumber(stats[1]["agility"])) then
+			if math.random(0,100) < (tonumber(stats[player:GetName()]["luck"]) + tonumber(stats[player:GetName()]["agility"])) then
 				TDI.FinalDamage = 0
 				send_battlelog(player, "you dodged the Attack")
 			else
@@ -583,11 +580,11 @@ function MyOnTakeDamage(Receiver, TDI)
 		end
 		-- Fall Damage somewhat with agility
 		if TDI.DamageType == 3 then
-			TDI.FinalDamage = TDI.FinalDamage / (stats[1]["agility"] / 5)
+			TDI.FinalDamage = TDI.FinalDamage / (stats[player:GetName()]["agility"] / 5)
 			send_battlelog(player, "you got " .. TDI.FinalDamage .. " Fall Damage")
 		end
-		if tonumber(stats[1]["health"]) > TDI.FinalDamage then
-			set_stats(Receiver, "health", stats[1]["health"] - TDI.FinalDamage)
+		if tonumber(stats[player:GetName()]["health"]) > TDI.FinalDamage then
+			set_stats(Receiver, "health", stats[player:GetName()]["health"] - TDI.FinalDamage)
 			TDI.FinalDamage = 1
 		end
 	end
@@ -595,13 +592,13 @@ end
 
 function get_exp(player)
 	local stats = get_stats(player)
-	return stats[1]["exp"]
+	return stats[player:GetName()]["exp"]
 end
 
 function send_battlelog(player, message)
 	-- Get if battlelog is on or off from DB
 	local stats = get_stats(player)
-	if stats[1]["battlelog"] == 1 then
+	if stats[player:GetName()]["battlelog"] == 1 then
 		player:SendMessage(message)
 	end
 end
@@ -618,7 +615,7 @@ function give_exp(exp, player)
 	local level_after = calc_level(exp_after)
 	if level_before < level_after then
 		local stats = get_stats(player)
-		stats[1]["skillpoints"] = stats[1]["skillpoints"] + 1
+		stats[player:GetName()]["skillpoints"] = stats[player:GetName()]["skillpoints"] + 1
 		return true
 	end
 	return false
