@@ -84,7 +84,6 @@ function MyOnPlayerSpawned(Player)
 end
 
 function mmo_join(command, player)
-	local stats = get_stats(player)
 	if stats[player:GetName()]["fraction"] == nil or stats[player:GetName()]["fraction"] == "" then
 		if command[3] == "horde" then
 			set_stats(player, "fraction", "alliance")
@@ -106,7 +105,6 @@ function mmo_join(command, player)
 end
 
 function save_player(player)
-	local stats = get_stats(player)
 	g_Storage:ExecuteCommand("save_player",
 		{
 			player_name = stats[player:GetName()]["name"],
@@ -128,7 +126,7 @@ function save_player(player)
 		}
 	)
 	if stats[player:GetName()]["last_killedx"] ~= nil and stats[player:GetName()]["last_killedy"] ~= nil and stats[player:GetName()]["last_killedz"] ~= nil then
-		g_Storage:ExecuteCommand("update_last_killed.sql",
+		g_Storage:ExecuteCommand("update_last_killed",
 			{
 				last_killedx = stats[player:GetName()]["last_killedx"],
 				last_killedy = stats[player:GetName()]["last_killedy"],
@@ -197,8 +195,6 @@ function dospell(command, player, cooldown, cast_time, counter)
 end
 
 function check_magic(player, amount)
-	local stats = get_stats(player)
-
 	if tonumber(stats[player:GetName()]["magic"]) >= amount then
 		local magic_after = tonumber(stats[player:GetName()]["magic"]) - amount
 		return true
@@ -208,8 +204,6 @@ function check_magic(player, amount)
 end
 
 function rem_magic(player, amount)
-	local stats = get_stats(player)
-
 	if tonumber(stats[player:GetName()]["magic"]) >= amount then
 		local magic_after = tonumber(stats[player:GetName()]["magic"]) - amount
 		set_stats(player, "magic", magic_after)
@@ -238,7 +232,6 @@ end
 function MyOnWorldTick(World, TimeDelta)
 	-- add MAGIC regeneration
 	local callback = function(player)
-		local stats = get_stats(player)
 		local player_name = player:GetName()
 		add_magic_regeneration(player, 1, stats)
 		add_health_regeneration(player, stats)
@@ -316,7 +309,6 @@ function MyOnWorldTick(World, TimeDelta)
 end
 
 function battlelog(command, player)
-	local stats = get_stats(player)
 	if stats[player:GetName()]["battlelog"] == 0 then
 		set_stats(player, "battlelog", 1)
 		player:SendMessage("turned Battlelog on")
@@ -330,7 +322,6 @@ function battlelog(command, player)
 end
 
 function statusbar(command, player)
-	local stats = get_stats(player)
 	if stats[player:GetName()]["statusbar"] == 0 then
 		set_stats(player, "statusbar", 1)
 		player:SendMessage("turned Statusbar on")
@@ -351,7 +342,6 @@ function MyOnPlayerJoined(Player)
 		register_new_player(Player)
 	end
 	show_stats(Player)
-	local stats = get_stats(Player)
 	Player:SetMaxHealth(20 * (stats[Player:GetName()]["endurance"]))
 end
 
@@ -390,20 +380,15 @@ function set_stats(player, stat, amount)
 	stats[player:GetName()][stat] = amount
 end
 
-function get_stats(player)
-	if stats == nil or stats[player:GetName()] == nil then
-		stats = get_stats_initialize(player)
-	end
-	return stats
-end
-
 function checkifexist(Player)
 	-- return true if player exists in db otherwise false
-	res = get_stats(Player)
-	if res[1] == nil then
+	if stats == nil or stats[Player:GetName()] == nil then
+		stats = get_stats_initialize(Player)
+	end
+	if stats[Player:GetName()] == nil then
 		return false
 	end
-	if res[1]["name"] == Player:GetName() then
+	if stats[Player:GetName()]["name"] == Player:GetName() then
 		return true
 	end
 	return false
@@ -458,7 +443,6 @@ function MyOnKilled(Victim, TDI)
 	if TDI.Attacker ~= nil and TDI.Attacker:IsPlayer() then
 		local player = tolua.cast(TDI.Attacker, "cPlayer")
 		if TDI.Attacker ~= nil and Victim:IsPlayer() and TDI.Attacker:IsPlayer() then
-			local stats = get_stats(Victim)
 			exp = 25 * calc_level(stats[player:GetName()]["exp"])
 			send_battlelog(player, "You killed a Player")
 		end
@@ -482,7 +466,6 @@ function MyOnKilled(Victim, TDI)
 			end
 		end
 		if TDI.Attacker ~= nil and TDI.Attacker:IsPlayer() and give_exp(exp, player) then
-			local stats = get_stats(player) -- we need the current exp to calculate the new level
 			set_stats(player, "level", calc_level(stats["exp"]))
 			send_battlelog(player, "Level UP! you are now Level " .. stats[player:GetName()]["level"])
 		end
@@ -491,7 +474,6 @@ end
 
 function calc_available_skill_points(player)
 	-- calculate not given skill points
-	local stats = get_stats(player)
 	local available_points = stats[player:GetName()]["level"] + 4 - (tonumber(stats[player:GetName()]["strength"]) + tonumber(stats[player:GetName()]["endurance"]) + tonumber(stats[player:GetName()]["intelligence"]) + tonumber(stats[player:GetName()]["agility"]) + tonumber(stats[player:GetName()]["luck"]))
 	return available_points
 end
@@ -499,7 +481,6 @@ end
 function add_skill(player, skillname)
 	-- add skill point to the given skill if skillpoints available
 	if calc_available_skill_points(player) > 0 then
-		local stats = get_stats(player)
 		set_stats(player, skillname[2], tonumber(stats[player:GetName()][skillname[2]]) + 1)
 		if skillname[2] == "endurance" then
 			player:SetMaxHealth(player:GetMaxHealth() + 20)
@@ -544,9 +525,9 @@ end
 function MyOnTakeDamage(Receiver, TDI)
 	if TDI.Attacker ~= nil and Receiver:IsPlayer() and TDI.Attacker:IsPlayer() then
 		local player = tolua.cast(TDI.Attacker, "cPlayer")
-		local stats_receiver = get_stats(Receiver)
-		local stats_attacker = get_stats(player)
-		if stats_receiver[1]["fraction"] == stats_attacker[1]["fraction"] then
+		local receiver_name = Receiver:GetName()
+		local attacker_name = player:GetName()
+		if stats[receiver_name]["fraction"] == stats[attacker_name]["fraction"] then
 			TDI.FinalDamage = 0
 			player:SendMessage("this Player is in the same Fraction")
 			return true
@@ -554,7 +535,6 @@ function MyOnTakeDamage(Receiver, TDI)
 	end
 	if TDI.Attacker ~= nil and TDI.Attacker:IsPlayer() then
 		local player = tolua.cast(TDI.Attacker, "cPlayer")
-		local stats = get_stats(player)
 		TDI.FinalDamage = TDI.FinalDamage / 5 * stats[player:GetName()]["strength"]; -- lower damage to make better balance
 		if math.random(0,100) <= tonumber(stats[player:GetName()]["luck"]) then
 			TDI.FinalDamage = TDI.FinalDamage * 2
@@ -567,7 +547,6 @@ function MyOnTakeDamage(Receiver, TDI)
 	end
 	if Receiver:IsPlayer() then
 		local player = tolua.cast(Receiver, "cPlayer")
-		local stats = get_stats(player)
 		if TDI.DamageType ~= 3 then
 			-- add dodge with LUCK and AGILITY
 			if math.random(0,100) < (tonumber(stats[player:GetName()]["luck"]) + tonumber(stats[player:GetName()]["agility"])) then
@@ -587,17 +566,18 @@ function MyOnTakeDamage(Receiver, TDI)
 			set_stats(Receiver, "health", stats[player:GetName()]["health"] - TDI.FinalDamage)
 			TDI.FinalDamage = 1
 		end
+		if stats[player:GetName()] == 0 then
+			TDI.FinalDamage = 20 -- lets be sure to kill him
+		end
 	end
 end
 
 function get_exp(player)
-	local stats = get_stats(player)
 	return stats[player:GetName()]["exp"]
 end
 
 function send_battlelog(player, message)
 	-- Get if battlelog is on or off from DB
-	local stats = get_stats(player)
 	if stats[player:GetName()]["battlelog"] == 1 then
 		player:SendMessage(message)
 	end
@@ -614,7 +594,6 @@ function give_exp(exp, player)
 	set_stats(player, "exp", exp_after)
 	local level_after = calc_level(exp_after)
 	if level_before < level_after then
-		local stats = get_stats(player)
 		stats[player:GetName()]["skillpoints"] = stats[player:GetName()]["skillpoints"] + 1
 		return true
 	end
