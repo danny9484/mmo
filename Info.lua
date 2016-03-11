@@ -2,7 +2,7 @@ g_PluginInfo =
 {
 	Name = "mmo",
 	Date = "2016-03-13",
-	Description = "Adds a Level System, Skills and Magic to Minecraft",
+	Description = "Adds a Level System, Skills and Magic to Minecraft. You earn exp by killing Monsters and other Players. If you raise a level you get a skillpoint which you can use to improve your skills. Cast spells to kill even more enemies but you also need enough magic. For better balance with higher levels the usual damage a player does has been decreased and also the damage a player gets has been increased.",
 	Commands = {
 	["/skills"] = {
 		Handler = skills,

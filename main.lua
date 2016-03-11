@@ -140,11 +140,11 @@ function save_player(player)
 end
 
 function spell(command, player)
- local counter = spell_counter - 1
+ local counter = 1
 	if #command == 1 then
-		while counter ~= 0 do
+		while counter ~= spell_counter do
 			player:SendMessage("/" .. spells[counter]["name"] .. " | " .. spells[counter]["description_en"] .. " | Magic: " .. spells[counter]["magic"])
-			counter = counter - 1
+			counter = counter + 1
 		end
 		return true
 	end
