@@ -12,9 +12,9 @@ just add the Plugin in your Servers Plugin Folder and Activate it.
 
 /skills <skill> | to add a point to a skill or without skill to get a list of skills
 
-/battlelog | to turn on/off the battlelog (messages from mmo)
+/mmo battlelog | to turn on/off the battlelog (messages from mmo)
 
-/statusbar | to turn on/off the statusbar
+/mmo statusbar | to turn on/off the statusbar
 
 /mmo join <fraction> | join the horde or the alliance
 
@@ -29,3 +29,5 @@ mmo.battlelog
 mmo.statusbar
 
 mmo.join
+
+mmo.help | needed to execute /mmo commands

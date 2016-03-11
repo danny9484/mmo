@@ -1,0 +1,34 @@
+INSERT INTO "mmo" (
+  name,
+  exp,
+  health,
+  health_before,
+  strength,
+  agility,
+  luck,
+  intelligence,
+  magic,
+  magic_max,
+  endurance,
+  skillpoints,
+  battlelog,
+  statusbar,
+  level
+)
+VALUES (
+  $player_name,
+  $exp,
+  $health,
+  $health_before,
+  $strength,
+  $agility,
+  $luck,
+  $intelligence,
+  $magic,
+  $magic_max,
+  $endurance,
+  $skillpoints,
+  $battlelog,
+  $statusbar,
+  $level
+)

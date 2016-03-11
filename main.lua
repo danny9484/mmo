@@ -15,15 +15,8 @@ function Initialize(Plugin)
 
 	PLUGIN = Plugin -- NOTE: only needed if you want OnDisable() to use GetName() or something like that
 
-	-- Command Bindings
-	cPluginManager.BindCommand("/skills", "mmo.skills", skills, " ~ list skills or add skillpoints")
-	cPluginManager.BindCommand("/battlelog", "mmo.battlelog", battlelog, " - turn battlelog on / off")
-	cPluginManager.BindCommand("/statusbar", "mmo.statusbar", statusbar, " - turn statusbar on / off")
-	cPluginManager.BindCommand("/spell", "mmo.spell", spell, " ~ cast a spell")
-	cPluginManager.BindCommand("/mmo", "mmo.join", mmo_join, " ~ join a fraction")
-
 	-- Database stuff
-	db = cSQLiteHandler("mmo.sqlite")
+	g_Storage = cSQLiteStorage:new()
 	create_database()
 
 	-- declare global variables
@@ -31,16 +24,19 @@ function Initialize(Plugin)
 	spells = {}
 	counter = 0
 	stats = {}
+	stats[1] = {}
 	cooldown_player = {}
 	cast_time_player = {}
 
 	-- read Config
-
 	local IniFile = cIniFile();
 	if (IniFile:ReadFile(PLUGIN:GetLocalFolder() .. "/config.ini")) then
 		exp_multiplicator = IniFile:GetValue("Settings", "exp_multiplicator")
 		battlelog_default = IniFile:GetValue("Settings", "battlelog_default")
 		statusbar_default = IniFile:GetValue("Settings", "statusbar_default")
+		exp_multiplicator = tonumber(exp_multiplicator)
+		battlelog_default = tonumber(battlelog_default)
+		statusbar_default = tonumber(statusbar_default)
 		    while IniFile:GetValue("Spells", tostring(spell_counter)) ~= "" do
 	      spells[spell_counter] = IniFile:GetValue("Spells", tostring(spell_counter))
 				local IniFile_spell = cIniFile();
@@ -66,8 +62,8 @@ function Initialize(Plugin)
 
 	-- Use the InfoReg shared library to process the Info.lua file:
 	dofile(cPluginManager:GetPluginsPath() .. "/InfoReg.lua")
-	--RegisterPluginInfoCommands()
-	--RegisterPluginInfoConsoleCommands()
+	RegisterPluginInfoCommands()
+	--RegisterPluginInfoConsoleCommands() -- not using any currently
 
 	LOG("Initialized " .. Plugin:GetName() .. " v." .. Plugin:GetVersion())
 	return true
@@ -75,6 +71,7 @@ end
 
 function OnDisable()
 	LOG(PLUGIN:GetName() .. " is shutting down...")
+	-- TODO save all Players when shutting down
 end
 
 function MyOnDisconnect(Client, Reason)
@@ -111,42 +108,43 @@ end
 
 function save_player(player)
 	local stats = get_stats(player)
-	local updateList = cUpdateList()
-	:Update("name", stats[1]["name"])
-	:Update("exp", stats[1]["exp"])
-	:Update("health", stats[1]["health"])
-	:Update("health_before", stats[1]["health_before"])
-	:Update("strength", stats[1]["strength"])
-	:Update("agility", stats[1]["agility"])
-	:Update("luck", stats[1]["luck"])
-	:Update("intelligence", stats[1]["intelligence"])
-	:Update("magic", stats[1]["magic"])
-	:Update("magic_max", stats[1]["magic_max"])
-	:Update("endurance", stats[1]["endurance"])
-	:Update("skillpoints", calc_available_skill_points(player))
-	:Update("battlelog", stats[1]["battlelog"])
-	:Update("statusbar", stats[1]["statusbar"])
-	:Update("fraction", stats[1]["fraction"])
-	local whereList = cWhereList()
-	:Where("name", player:GetName())
-	local res = db:Update("mmo", updateList, whereList)
+	g_Storage:ExecuteCommand("save_player",
+		{
+			player_name = stats[1]["name"],
+			exp = stats[1]["exp"],
+			health = stats[1]["health"],
+			health_before = stats[1]["health_before"],
+			strength = stats[1]["strength"],
+			agility = stats[1]["agility"],
+			luck = stats[1]["luck"],
+			intelligence = stats[1]["intelligence"],
+			endurance = stats[1]["endurance"],
+			skillpoints = stats[1]["skillpoints"],
+			battlelog = stats[1]["battlelog"],
+			statusbar = stats[1]["statusbar"],
+			magic = stats[1]["magic"],
+			magic_max = stats[1]["magic_max"],
+			fraction = stats[1]["fraction"],
+			level = stats[1]["level"]
+		}
+	)
 	if stats[1]["last_killedx"] ~= nil and stats[1]["last_killedy"] ~= nil and stats[1]["last_killedz"] ~= nil then
-		local updateList = cUpdateList()
-		:Update("last_killedx", stats[1]["last_killedx"])
-		:Update("last_killedy", stats[1]["last_killedy"])
-		:Update("last_killedz", stats[1]["last_killedz"])
-		local whereList = cWhereList()
-		:Where("name", player:GetName())
-		local res = db:Update("mmo", updateList, whereList)
+		g_Storage:ExecuteCommand("update_last_killed.sql",
+			{
+				last_killedx = stats[1]["last_killedx"],
+				last_killedy = stats[1]["last_killedy"],
+				last_killedz = stats[1]["last_killedz"]
+			}
+		)
 	end
 end
 
 function spell(command, player)
- local counter = spell_counter - 1
+ local counter = 1
 	if #command == 1 then
-		while counter ~= 0 do
+		while counter ~= spell_counter do
 			player:SendMessage("/" .. spells[counter]["name"] .. " | " .. spells[counter]["description_en"] .. " | Magic: " .. spells[counter]["magic"])
-			counter = counter - 1
+			counter = counter + 1
 		end
 		return true
 	end
@@ -163,35 +161,36 @@ function spell(command, player)
 end
 
 function dospell(command, player, cooldown, cast_time, counter)
+	local player_name = player:GetName()
 	if cast_time > 0 and check_magic(player, tonumber(spells[counter]["magic"])) then
-		player:SendMessage("Charging Spell, please wait")
-		cast_time_player[player:GetName()]["cast_time"] = cast_time
-		cast_time_player[player:GetName()]["cast_time_max"] = cast_time
-		cast_time_player[player:GetName()]["command"] = command
-		cast_time_player[player:GetName()]["player"] = player
-		cast_time_player[player:GetName()]["counter"] = counter
-		cast_time_player[player:GetName()]["cooldown"] = cooldown
-		cast_time_player[player:GetName()]["positionx"] = player:GetPosX()
-		cast_time_player[player:GetName()]["positiony"] = player:GetPosY()
-		cast_time_player[player:GetName()]["positionz"] = player:GetPosZ()
+		send_battlelog(player, "Charging Spell, please wait")
+		cast_time_player[player_name]["cast_time"] = cast_time
+		cast_time_player[player_name]["cast_time_max"] = cast_time
+		cast_time_player[player_name]["command"] = command
+		cast_time_player[player_name]["player"] = player
+		cast_time_player[player_name]["counter"] = counter
+		cast_time_player[player_name]["cooldown"] = cooldown
+		cast_time_player[player_name]["positionx"] = player:GetPosX()
+		cast_time_player[player_name]["positiony"] = player:GetPosY()
+		cast_time_player[player_name]["positionz"] = player:GetPosZ()
 		return true
 	end
-	if cooldown_player[player:GetName()] == nil then
-		cooldown_player[player:GetName()] = {}
+	if cooldown_player[player_name] == nil then
+		cooldown_player[player_name] = {}
 	end
 	if check_magic(player, tonumber(spells[counter]["magic"])) then
-		if cooldown_player[player:GetName()][counter][spells[counter]["cooldown"]] == nil then
-			cooldown_player[player:GetName()][counter][spells[counter]["cooldown"]] = 0
+		if cooldown_player[player_name][counter][spells[counter]["cooldown"]] == nil then
+			cooldown_player[player_name][counter][spells[counter]["cooldown"]] = 0
 		end
-		if cooldown_player[player:GetName()][counter][spells[counter]["cooldown"]] > 0 then
+		if cooldown_player[player_name][counter][spells[counter]["cooldown"]] > 0 then
 			player:SendMessage("Spell has to cooldown")
 		else
 			if rem_magic(player, tonumber(spells[counter]["magic"])) then
 				assert(loadfile(PLUGIN:GetLocalFolder() .. "/spells/" .. spells[counter]["name"] .. "/" .. spells[counter]["name"] .. ".lua"))(command, player)
 			end
 		end
-		if cooldown_player[player:GetName()][counter][spells[counter]["cooldown"]] == 0 then
-			cooldown_player[player:GetName()][counter][spells[counter]["cooldown"]] = cooldown
+		if cooldown_player[player_name][counter][spells[counter]["cooldown"]] == 0 then
+			cooldown_player[player_name][counter][spells[counter]["cooldown"]] = cooldown
 		end
 	else
 		send_battlelog(player, "not enough Magic!")
@@ -241,53 +240,54 @@ function MyOnWorldTick(World, TimeDelta)
 	-- add MAGIC regeneration
 	local callback = function(player)
 		local stats = get_stats(player)
+		local player_name = player:GetName()
 		add_magic_regeneration(player, 1, stats)
 		add_health_regeneration(player, stats)
-		if cast_time_player[player:GetName()] == nil then
-			cast_time_player[player:GetName()] = {}
+		if cast_time_player[player_name] == nil then
+			cast_time_player[player_name] = {}
 		end
-		if cast_time_player[player:GetName()]["cast_time"] == nil then
-			cast_time_player[player:GetName()]["cast_time"] = 0
+		if cast_time_player[player_name]["cast_time"] == nil then
+			cast_time_player[player_name]["cast_time"] = 0
 		end
-		if cast_time_player[player:GetName()]["cast_time"] > 0 then
-			cast_time_player[player:GetName()]["cast_time"] = cast_time_player[player:GetName()]["cast_time"] - 1
-			if cast_time_player[player:GetName()]["positionx"] ~= player:GetPosX() or cast_time_player[player:GetName()]["positiony"] ~= player:GetPosY() or cast_time_player[player:GetName()]["positionz"] ~= player:GetPosZ() then
+		if cast_time_player[player_name]["cast_time"] > 0 then
+			cast_time_player[player_name]["cast_time"] = cast_time_player[player_name]["cast_time"] - 1
+			if cast_time_player[player_name]["positionx"] ~= player:GetPosX() or cast_time_player[player_name]["positiony"] ~= player:GetPosY() or cast_time_player[player_name]["positionz"] ~= player:GetPosZ() then
 				send_battlelog(player, "Casting aborted!")
-				cast_time_player[player:GetName()]["cast_time"] = 0
+				cast_time_player[player_name]["cast_time"] = 0
 				return true
 			end
-			if cast_time_player[player:GetName()]["cast_time"] == 0 then
+			if cast_time_player[player_name]["cast_time"] == 0 then
 				send_battlelog(player, "Casting!")
-				dospell(cast_time_player[player:GetName()]["command"], cast_time_player[player:GetName()]["player"], cast_time_player[player:GetName()]["cooldown"], 0, cast_time_player[player:GetName()]["counter"])
+				dospell(cast_time_player[player_name]["command"], cast_time_player[player_name]["player"], cast_time_player[player_name]["cooldown"], 0, cast_time_player[player_name]["counter"])
 			end
 		end
 		local i = spell_counter - 1
 		while i > 0 do
-			if cooldown_player[player:GetName()] == nil then
-				cooldown_player[player:GetName()] = {}
+			if cooldown_player[player_name] == nil then
+				cooldown_player[player_name] = {}
 			end
-			if cooldown_player[player:GetName()][i] == nil then
-				cooldown_player[player:GetName()][i] = {}
-				cooldown_player[player:GetName()][i][spells[i]["cooldown"]] = 0
+			if cooldown_player[player_name][i] == nil then
+				cooldown_player[player_name][i] = {}
+				cooldown_player[player_name][i][spells[i]["cooldown"]] = 0
 			end
-			if cooldown_player[player:GetName()][i]["cooldown_before"] == 1 then
-				player:SendMessage(spells[i]["name"] .. ": cooled down")
-				cooldown_player[player:GetName()][i]["cooldown_before"] = 0
+			if cooldown_player[player_name][i]["cooldown_before"] == 1 then
+				send_battlelog(player, spells[i]["name"] .. ": cooled down")
+				cooldown_player[player_name][i]["cooldown_before"] = 0
 			end
-			if cooldown_player[player:GetName()][i][spells[i]["cooldown"]] > 0 then
-				cooldown_player[player:GetName()][i][spells[i]["cooldown"]] = cooldown_player[player:GetName()][i][spells[i]["cooldown"]] - 1
-				if cooldown_player[player:GetName()][i][spells[i]["cooldown"]] == 0 then
+			if cooldown_player[player_name][i][spells[i]["cooldown"]] > 0 then
+				cooldown_player[player_name][i][spells[i]["cooldown"]] = cooldown_player[player_name][i][spells[i]["cooldown"]] - 1
+				if cooldown_player[player_name][i][spells[i]["cooldown"]] == 0 then
 				end
-				if cooldown_player[player:GetName()][i][spells[i]["cooldown"]] == 0 then
-					cooldown_player[player:GetName()][i]["cooldown_before"] = 1
+				if cooldown_player[player_name][i][spells[i]["cooldown"]] == 0 then
+					cooldown_player[player_name][i]["cooldown_before"] = 1
 				end
 			end
 			i = i - 1
 		end
 		counter = 75
-		if stats[1]["statusbar"] == "1" and cast_time_player[player:GetName()]["cast_time"] ~= 0 then
+		if stats[1]["statusbar"] == 1 and cast_time_player[player_name]["cast_time"] ~= 0 then
 			local bar_range = 40
-			local load = bar_range / (cast_time_player[player:GetName()]["cast_time_max"] / cast_time_player[player:GetName()]["cast_time"])
+			local load = bar_range / (cast_time_player[player_name]["cast_time_max"] / cast_time_player[player_name]["cast_time"])
 			local load_message = ""
 			local load_a = bar_range - load
 			while load_a > 0 do
@@ -300,8 +300,8 @@ function MyOnWorldTick(World, TimeDelta)
 			end
 			player:SendAboveActionBarMessage("[" .. load_message .. "]")
 		end
-		if stats[1]["statusbar"] == "1" and cast_time_player[player:GetName()]["cast_time"] == 0 then
-			player:SendAboveActionBarMessage("Health: " .. stats[1]["health"] .. " / " .. player:GetMaxHealth() .. " | Magic: " .. stats[1]["magic"] .. " / " .. stats[1]["magic_max"] .. " | lvl: " .. calc_level(stats[1]["exp"]) .. " | exp: " .. stats[1]["exp"] .. " / " .. calc_exp_to_level(calc_level(stats[1]["exp"]) + 1))
+		if stats[1]["statusbar"] == 1 and cast_time_player[player_name]["cast_time"] == 0 then
+			player:SendAboveActionBarMessage("Health: " .. stats[1]["health"] .. " / " .. player:GetMaxHealth() .. " | Magic: " .. stats[1]["magic"] .. " / " .. stats[1]["magic_max"] .. " | lvl: " .. stats[1]["level"] .. " | exp: " .. stats[1]["exp"] .. " / " .. calc_exp_to_level(stats[1]["level"] + 1))
 		end
 	end
 	counter = counter + 1
@@ -318,13 +318,13 @@ end
 
 function battlelog(command, player)
 	local stats = get_stats(player)
-	if stats[1]["battlelog"] == "0" then
-		set_stats(player, "battlelog", "1")
+	if stats[1]["battlelog"] == 0 then
+		set_stats(player, "battlelog", 1)
 		player:SendMessage("turned Battlelog on")
 		return true
 	end
-	if stats[1]["battlelog"] == "1" then
-		set_stats(player, "battlelog", "0")
+	if stats[1]["battlelog"] == 1 then
+		set_stats(player, "battlelog", 0)
 		player:SendMessage("turned Battlelog off")
 		return true
 	end
@@ -332,13 +332,13 @@ end
 
 function statusbar(command, player)
 	local stats = get_stats(player)
-	if stats[1]["statusbar"] == "0" then
-		set_stats(player, "statusbar", "1")
+	if stats[1]["statusbar"] == 0 then
+		set_stats(player, "statusbar", 1)
 		player:SendMessage("turned Statusbar on")
 		return true
 	end
-	if stats[1]["statusbar"] == "1" then
-		set_stats(player, "statusbar", "0")
+	if stats[1]["statusbar"] == 1 then
+		set_stats(player, "statusbar", 0)
 		player:SendMessage("turned Statusbar off")
 		return true
 	end
@@ -364,7 +364,7 @@ function show_stats (Player)
 	 Player:SendMessage("Luck: " .. stats[1]["luck"])
 	 Player:SendMessage("Intelligence: " .. stats[1]["intelligence"])
 	 Player:SendMessage("Endurance: " .. stats[1]["endurance"])
-	 Player:SendMessage("Level: " .. calc_level(stats[1]["exp"]))
+	 Player:SendMessage("Level: " .. stats[1]["level"])
 	 Player:SendMessage("Magic: " .. stats[1]["magic"] .. " of " .. stats[1]["magic_max"])
 	 if stats[1]["fraction"] == nil  or stats[1]["fraction"] == "" then
 	 	Player:SendMessage("Use /mmo join horde/alliance to join a fraction")
@@ -377,10 +377,16 @@ function show_stats (Player)
 end
 
 function get_stats_initialize(Player)
-	local whereList = cWhereList()
-	:Where("name", Player:GetName())
-	local res = db:Select("mmo", "*", whereList)
-	return res
+	g_Storage:ExecuteCommand("initialize_player",
+	{
+		player_name = Player:GetName();
+	},
+	function(stats_sql)
+		stats[1] = stats_sql;
+		return true
+	end
+	)
+	return stats
 end
 
 function set_stats(player, stat, amount)
@@ -388,14 +394,10 @@ function set_stats(player, stat, amount)
 end
 
 function get_stats(player)
-	if stats == nil then
+	if stats == nil or stats[player:GetName()] == nil then
 		stats[player:GetName()] = get_stats_initialize(player)
 	end
-	if stats[player:GetName()] == nil then
-		stats[player:GetName()] = get_stats_initialize(player)
-	end
-	res = stats[player:GetName()]
-	return res
+	return stats[player:GetName()]
 end
 
 function checkifexist(Player)
@@ -412,22 +414,25 @@ end
 
 function register_new_player(Player)
 	-- register new player in database
-	local insertList = cInsertList()
-	:Insert("name", Player:GetName())
-	:Insert("exp", 0)
-	:Insert("health", 20)
-	:Insert("health_before", 20)
-	:Insert("strength", 1)
-	:Insert("agility", 1)
-	:Insert("luck", 1)
-	:Insert("intelligence", 1)
-	:Insert("magic", 100)
-	:Insert("magic_max", 100)
-	:Insert("endurance", 1)
-	:Insert("skillpoints", 0)
-	:Insert("battlelog", battlelog_default)
-	:Insert("statusbar", statusbar_default)
-	local res = db:Insert("mmo", insertList)
+	g_Storage:ExecuteCommand("register_new_player",
+		{
+			player_name = Player:GetName(),
+		  exp = 0,
+		  health = 20,
+		  health_before = 20,
+		  strength = 1,
+		  agility = 1,
+		  luck = 1,
+		  intelligence = 1,
+		  magic = 100,
+		  magic_max = 100,
+			endurance = 1,
+		  skillpoints = 0,
+		  battlelog = battlelog_default,
+		  statusbar = statusbar_default,
+			level = 1
+		}
+	)
 	stats[Player:GetName()][1] = {}
 	set_stats(Player, "name", Player:GetName())
 	set_stats(Player, "exp", 0)
@@ -443,6 +448,7 @@ function register_new_player(Player)
 	set_stats(Player, "statusbar", statusbar_default)
 	set_stats(Player, "magic", 100)
 	set_stats(Player, "magic_max", 100)
+	set_stats(Player, "level", 1)
 end
 
 function MyOnKilled(Victim, TDI)
@@ -479,8 +485,9 @@ function MyOnKilled(Victim, TDI)
 			end
 		end
 		if TDI.Attacker ~= nil and TDI.Attacker:IsPlayer() and give_exp(exp, player) then
-			local lvl = calc_level(get_exp(player))
-			send_battlelog(player, "Level UP! you are now Level " .. lvl)
+			local stats = get_stats(player) -- we need the current exp to calculate the new level
+			set_stats(player, "level", calc_level(stats["exp"]))
+			send_battlelog(player, "Level UP! you are now Level " .. stats[1]["level"])
 		end
 	end
 end
@@ -488,7 +495,7 @@ end
 function calc_available_skill_points(player)
 	-- calculate not given skill points
 	local stats = get_stats(player)
-	local available_points = calc_level(tonumber(stats[1]["exp"])) + 4 - (tonumber(stats[1]["strength"]) + tonumber(stats[1]["endurance"]) + tonumber(stats[1]["intelligence"]) + tonumber(stats[1]["agility"]) + tonumber(stats[1]["luck"]))
+	local available_points = stats[1]["level"] + 4 - (tonumber(stats[1]["strength"]) + tonumber(stats[1]["endurance"]) + tonumber(stats[1]["intelligence"]) + tonumber(stats[1]["agility"]) + tonumber(stats[1]["luck"]))
 	return available_points
 end
 
@@ -594,7 +601,7 @@ end
 function send_battlelog(player, message)
 	-- Get if battlelog is on or off from DB
 	local stats = get_stats(player)
-	if stats[1]["battlelog"] == "1" then
+	if stats[1]["battlelog"] == 1 then
 		player:SendMessage(message)
 	end
 end
@@ -641,27 +648,6 @@ end
 
 function create_database()
 -- Create DB if not exists
-local db = cSQLiteHandler("mmo.sqlite",
-	cTable("mmo")
-	:Field("ID", "INTEGER", "PRIMARY KEY AUTOINCREMENT")
-	:Field("name", "TEXT")
-	:Field("exp","INTEGER")
-	:Field("health", "INTEGER")
-	:Field("health_before", "INTEGER")
-	:Field("strength","INTEGER")
-	:Field("agility","INTEGER")
-	:Field("luck","INTEGER")
-	:Field("intelligence","INTEGER")
-	:Field("magic","INTEGER")
-	:Field("magic_max","INTEGER")
-	:Field("endurance","INTEGER")
-	:Field("skillpoints","INTEGER")
-	:Field("battlelog","INTEGER")
-	:Field("statusbar", "INTEGER")
-	:Field("fraction","TEXT")
-	:Field("last_killedx", "INTEGER")
-	:Field("last_killedy", "INTEGER")
-	:Field("last_killedz", "INTEGER")
-)
+	cSQLiteStorage:new()
   return true
 end

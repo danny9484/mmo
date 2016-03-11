@@ -1,0 +1,16 @@
+UPDATE mmo SET name=$player_name WHERE name=$player_name;
+UPDATE mmo SET exp=$exp WHERE name=$player_name;
+UPDATE mmo SET health=$health WHERE name=$player_name;
+UPDATE mmo SET health_before=$health_before WHERE name=$player_name;
+UPDATE mmo SET strength=$strength WHERE name=$player_name;
+UPDATE mmo SET agility=$agility WHERE name=$player_name;
+UPDATE mmo SET luck=$luck WHERE name=$player_name;
+UPDATE mmo SET intelligence=$intelligence WHERE name=$player_name;
+UPDATE mmo SET magic=$magic WHERE name=$player_name;
+UPDATE mmo SET magic_max=$magic_max WHERE name=$player_name;
+UPDATE mmo SET endurance=$endurance WHERE name=$player_name;
+UPDATE mmo SET skillpoints=$skillpoints WHERE name=$player_name;
+UPDATE mmo SET battlelog=$battlelog WHERE name=$player_name;
+UPDATE mmo SET statusbar=$statusbar WHERE name=$player_name;
+UPDATE mmo SET fraction=$fraction WHERE name=$player_name;
+UPDATE mmo SET level=$level WHERE name=$player_name
