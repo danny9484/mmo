@@ -446,9 +446,10 @@ end
 
 function MyOnKilled(Victim, TDI)
 	if Victim:IsPlayer() then
-		stats[Victim]["last_killedx"] = Victim:GetPosX()
-		stats[Victim]["last_killedy"] = Victim:GetPosY()
-		stats[Victim]["last_killedz"] = Victim:GetPosZ()
+		local victim_name = Victim:GetName()
+		stats[victim_name]["last_killedx"] = Victim:GetPosX()
+		stats[victim_name]["last_killedy"] = Victim:GetPosY()
+		stats[victim_name]["last_killedz"] = Victim:GetPosZ()
 	end
 	local exp = 0
 	if TDI.Attacker ~= nil and TDI.Attacker:IsPlayer() then
@@ -536,7 +537,6 @@ end
 function MyOnTakeDamage(Receiver, TDI)
 	if TDI.Attacker ~= nil and Receiver:IsPlayer() and TDI.Attacker:IsPlayer() then
 		local player = tolua.cast(TDI.Attacker, "cPlayer")
-		local receiver_name = Receiver:GetName()
 		local attacker_name = player:GetName()
 		if stats[receiver_name]["fraction"] == stats[attacker_name]["fraction"] then
 			TDI.FinalDamage = 0
@@ -558,9 +558,10 @@ function MyOnTakeDamage(Receiver, TDI)
 	end
 	if Receiver:IsPlayer() then
 		local player = tolua.cast(Receiver, "cPlayer")
+		local receiver_name = player:GetName()
 		if TDI.DamageType ~= 3 then
 			-- add dodge with LUCK and AGILITY
-			if math.random(0,100) < (stats[attacker_name]["luck"] + stats[attacker_name]["agility"]) then
+			if math.random(0,100) < (stats[receiver_name]["luck"] + stats[receiver_name]["agility"]) then
 				TDI.FinalDamage = 0
 				send_battlelog(player, "you dodged the Attack")
 			else
@@ -570,14 +571,14 @@ function MyOnTakeDamage(Receiver, TDI)
 		end
 		-- Fall Damage somewhat with agility
 		if TDI.DamageType == 3 then
-			TDI.FinalDamage = TDI.FinalDamage / (stats[attacker_name]["agility"] / 5)
+			TDI.FinalDamage = TDI.FinalDamage / (stats[receiver_name]["agility"] / 5)
 			send_battlelog(player, "you got " .. TDI.FinalDamage .. " Fall Damage")
 		end
-		if stats[attacker_name]["health"] > TDI.FinalDamage then
-			stats[receiver_name]["health"] = stats[attacker_name]["health"] - TDI.FinalDamage
+		if stats[receiver_name]["health"] > TDI.FinalDamage then
+			stats[receiver_name]["health"] = stats[receiver_name]["health"] - TDI.FinalDamage
 			TDI.FinalDamage = 1
 		end
-		if stats[attacker_name] == 0 then
+		if stats[receiver_name] == 0 then
 			TDI.FinalDamage = 20 -- lets be sure to kill him
 		end
 	end
