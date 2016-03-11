@@ -4,11 +4,10 @@
 command, player = ...
 	if #command == 2 then
 		if command[2] == "heal" then
-			local stats = get_stats(player)
 			if tonumber(stats["health"]) + 5 > player:GetMaxHealth() then
-  			set_stats(player, "health", player:GetMaxHealth())
+  			stats[player:GetName()]["health"] = player:GetMaxHealth())
 			else
-				set_stats(player, "health", tonumber(stats[1]["health"]) + 5)
+				stats[player:GetName()]["health"] = tonumber(stats[1]["health"]) + 5)
 			end
 			send_battlelog(player, "you have been healed")
 		end
@@ -17,11 +16,10 @@ command, player = ...
 	if #command == 3 then
 		if command[2] == "heal" then -- start heal
 			local heal_player = function(player)
-				local stats = get_stats(player)
 				if tonumber(stats[player:GetName()]["health"]) + 5 > player:GetMaxHealth() then
-					set_stats(player, "health", player:GetMaxHealth())
+					stats[player:GetName()]["health"] = player:GetMaxHealth())
 				else
-					set_stats(player, "health", tonumber(stats[1]["health"]) + 5)
+					stats[player:GetName()]["health"] = tonumber(stats[1]["health"]) + 5)
 				end
 				send_battlelog(player, "you have been healed")
 			end

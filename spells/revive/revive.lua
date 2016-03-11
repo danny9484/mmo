@@ -4,7 +4,6 @@ if command[2] == "revive" then -- TODO ask for revive
     player:SendMessage("you can't revive yourself")
   end
   local revive_player = function(player)
-    local stats = get_stats(player)
     player:SetInvulnerableTicks(500)
     player:SetPosX(stats["last_killedx"])
     player:SetPosY(stats["last_killedy"])
