@@ -546,6 +546,7 @@ function MyOnTakeDamage(Receiver, TDI)
 	end
 	if TDI.Attacker ~= nil and TDI.Attacker:IsPlayer() then
 		local player = tolua.cast(TDI.Attacker, "cPlayer")
+		local attacker_name = player:GetName()
 		TDI.FinalDamage = TDI.FinalDamage / 5 * stats[attacker_name]["strength"]; -- lower damage to make better balance
 		if math.random(0,100) <= stats[attacker_name]["luck"] then
 			TDI.FinalDamage = TDI.FinalDamage * 2
