@@ -5,9 +5,9 @@ if command[2] == "revive" then -- TODO ask for revive
   end
   local revive_player = function(player)
     player:SetInvulnerableTicks(500)
-    player:SetPosX(stats["last_killedx"])
-    player:SetPosY(stats["last_killedy"])
-    player:SetPosZ(stats["last_killedz"])
+    player:SetPosX(stats[player:GetUUID()]["last_killedx"])
+    player:SetPosY(stats[player:GetUUID()]["last_killedy"])
+    player:SetPosZ(stats[player:GetUUID()]["last_killedz"])
     send_battlelog(player, "you have been revived")
   end
   if cRoot:Get():FindAndDoWithPlayer(command[3], revive_player) then

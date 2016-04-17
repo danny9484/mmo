@@ -1,1 +1,1 @@
-SELECT * FROM mmo WHERE name=$player_name
+SELECT * FROM mmo WHERE uuid=$player_uuid

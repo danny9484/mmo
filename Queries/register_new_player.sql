@@ -1,5 +1,5 @@
 INSERT INTO "mmo" (
-  name,
+  uuid,
   exp,
   health,
   health_before,
@@ -16,7 +16,7 @@ INSERT INTO "mmo" (
   level
 )
 VALUES (
-  $player_name,
+  $player_uuid,
   $exp,
   $health,
   $health_before,

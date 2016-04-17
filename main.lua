@@ -46,8 +46,11 @@ function Initialize(Plugin)
 					spells[spell_counter]["author"] = IniFile_spell:GetValue("Spell", "Author")
 					spells[spell_counter]["description_en"] = IniFile_spell:GetValue("Spell", "Description_en")
 					spells[spell_counter]["magic"] = IniFile_spell:GetValue("Spell", "Magic")
-					spells[spell_counter]["cooldown"] = IniFile_spell:GetValue("Spell", "Cooldown")
+					spells[spell_counter]["cooldown"] =IniFile_spell:GetValue("Spell", "Cooldown")
 					spells[spell_counter]["cast_time"] = IniFile_spell:GetValue("Spell", "Cast_time")
+					spells[spell_counter]["magic"] = tonumber(spells[spell_counter]["magic"])
+					spells[spell_counter]["cooldown"] =tonumber(spells[spell_counter]["cooldown"])
+					spells[spell_counter]["cast_time"] = tonumber(spells[spell_counter]["cast_time"])
 	      	LOG(Plugin:GetName() .. ": Spell Initialized: " .. spells[spell_counter]["name"] .. " by " .. spells[spell_counter]["author"])
 				else
 					LOG(spells[spell_counter] .. ": Spell Initialization failed")
@@ -65,8 +68,8 @@ function Initialize(Plugin)
 	--RegisterPluginInfoConsoleCommands() -- not using any currently
 
 	-- initialize online players (for reload)
-	local callback_player = function(player)
-		checkifexist(player)
+	local callback_player = function(Player)
+		checkifexist(Player)
 	end
 	cRoot:Get():ForEachPlayer(callback_player)
 
@@ -76,8 +79,8 @@ end
 
 function OnDisable()
 	LOG(PLUGIN:GetName() .. " is shutting down...")
-	local callback_player = function(player)
-		save_player(player)
+	local callback_player = function(Player)
+		save_player(Player)
 	end
 	cRoot:Get():ForEachPlayer(callback_player)
 end
@@ -88,70 +91,70 @@ function MyOnDisconnect(Client, Reason)
 end
 
 function MyOnPlayerSpawned(Player)
-	stats[Player:GetName()]["health"] = Player:GetMaxHealth()
+	stats[Player:GetUUID()]["health"] = Player:GetMaxHealth()
 	Player:SetInvulnerableTicks(100) -- somebug caused spawn in air as a workaround for no fall damage
 end
 
-function mmo_join(command, player)
-	local player_name = player:GetName()
-	if stats[player_name]["fraction"] == nil or stats[player_name]["fraction"] == "" then
+function mmo_join(command, Player)
+	local player_uuid = Player:GetUUID()
+	if stats[player_uuid]["fraction"] == nil or stats[player_uuid]["fraction"] == "" then
 		if command[3] == "horde" then
-			stats[player_name]["fraction"] = "horde"
-			player:SendMessage("You joined the Horde")
+			stats[player_uuid]["fraction"] = "horde"
+			Player:SendMessage("You joined the Horde")
 			return true
 		end
 		if command[3] == "alliance" then
-			stats[player_name]["fraction"] = "alliance"
-			player:SendMessage("You joined the Alliance")
+			stats[player_uuid]["fraction"] = "alliance"
+			Player:SendMessage("You joined the Alliance")
 			return true
 		end
 	end
-	if stats[player_name]["fraction"] ~= "" then
-		player:SendMessage("You already joined a Fraction")
+	if stats[player_uuid]["fraction"] ~= "" then
+		Player:SendMessage("You already joined a Fraction")
 		return true
 	end
-	player:SendMessage("usage /mmo join horde/alliance")
+	Player:SendMessage("usage /mmo join horde/alliance")
 	return true
 end
 
-function save_player(player)
-	local player_name = player:GetName()
+function save_player(Player)
+	local player_uuid = Player:GetUUID()
 	g_Storage:ExecuteCommand("save_player",
 		{
-			player_name = stats[player_name]["name"],
-			exp = stats[player_name]["exp"],
-			health = stats[player_name]["health"],
-			health_before = stats[player_name]["health_before"],
-			strength = stats[player_name]["strength"],
-			agility = stats[player_name]["agility"],
-			luck = stats[player_name]["luck"],
-			intelligence = stats[player_name]["intelligence"],
-			endurance = stats[player_name]["endurance"],
-			skillpoints = stats[player_name]["skillpoints"],
-			battlelog = stats[player_name]["battlelog"],
-			statusbar = stats[player_name]["statusbar"],
-			magic = stats[player_name]["magic"],
-			magic_max = stats[player_name]["magic_max"],
-			fraction = stats[player_name]["fraction"],
-			level = stats[player_name]["level"]
+			player_uuid = stats[player_uuid]["uuid"],
+			exp = stats[player_uuid]["exp"],
+			health = stats[player_uuid]["health"],
+			health_before = stats[player_uuid]["health_before"],
+			strength = stats[player_uuid]["strength"],
+			agility = stats[player_uuid]["agility"],
+			luck = stats[player_uuid]["luck"],
+			intelligence = stats[player_uuid]["intelligence"],
+			endurance = stats[player_uuid]["endurance"],
+			skillpoints = stats[player_uuid]["skillpoints"],
+			battlelog = stats[player_uuid]["battlelog"],
+			statusbar = stats[player_uuid]["statusbar"],
+			magic = stats[player_uuid]["magic"],
+			magic_max = stats[player_uuid]["magic_max"],
+			fraction = stats[player_uuid]["fraction"],
+			level = stats[player_uuid]["level"]
 		}
 	)
-	if stats[player_name]["last_killedx"] ~= nil and stats[player_name]["last_killedy"] ~= nil and stats[player_name]["last_killedz"] ~= nil then
+	if stats[player_uuid]["last_killedx"] ~= nil and stats[player_uuid]["last_killedy"] ~= nil and stats[player_uuid]["last_killedz"] ~= nil then
 		g_Storage:ExecuteCommand("update_last_killed",
 			{
-				last_killedx = stats[player_name]["last_killedx"],
-				last_killedy = stats[player_name]["last_killedy"],
-				last_killedz = stats[player_name]["last_killedz"]
+				last_killedx = stats[player_uuid]["last_killedx"],
+				last_killedy = stats[player_uuid]["last_killedy"],
+				last_killedz = stats[player_uuid]["last_killedz"]
 			}
 		)
 	end
 end
 
-function spell(command, player)
+function spell(command, Player)
  local counter = 1
 	if #command == 1 then
 		while counter ~= spell_counter do
-			player:SendMessage("/" .. spells[counter]["name"] .. " | " .. spells[counter]["description_en"] .. " | Magic: " .. spells[counter]["magic"])
+			Player:SendMessage("/" .. spells[counter]["name"] .. " | " .. spells[counter]["description_en"] .. " | Magic: " .. spells[counter]["magic"])
 			counter = counter + 1
 		end
 		return true
@@ -160,7 +163,7 @@ function spell(command, player)
 		counter = spell_counter - 1
 		while counter ~= 0 do
 			if command[2] == spells[counter]["name"] then
-					dospell(command, player, spells[counter]["cooldown"], spells[counter]["cast_time"], counter)
+					dospell(command, Player, spells[counter]["cooldown"], spells[counter]["cast_time"], counter)
 			end
 			counter = counter - 1
 		end
@@ -168,132 +171,132 @@ function spell(command, player)
 	return true
 end
 
-function dospell(command, player, cooldown, cast_time, counter)
-	local player_name = player:GetName()
-	if cast_time > 0 and check_magic(player, spells[counter]["magic"]) then
-		send_battlelog(player, "Charging Spell, please wait")
-		cast_time_player[player_name]["cast_time"] = cast_time
-		cast_time_player[player_name]["cast_time_max"] = cast_time
-		cast_time_player[player_name]["command"] = command
-		cast_time_player[player_name]["player"] = player
-		cast_time_player[player_name]["counter"] = counter
-		cast_time_player[player_name]["cooldown"] = cooldown
-		cast_time_player[player_name]["positionx"] = player:GetPosX()
-		cast_time_player[player_name]["positiony"] = player:GetPosY()
-		cast_time_player[player_name]["positionz"] = player:GetPosZ()
+function dospell(command, Player, cooldown, cast_time, counter)
+	local player_uuid = Player:GetUUID()
+	if cast_time > 0 and check_magic(Player, spells[counter]["magic"]) then
+		send_battlelog(Player, "Charging Spell, please wait")
+		cast_time_player[player_uuid]["cast_time"] = cast_time
+		cast_time_player[player_uuid]["cast_time_max"] = cast_time
+		cast_time_player[player_uuid]["command"] = command
+		cast_time_player[player_uuid]["player"] = Player
+		cast_time_player[player_uuid]["counter"] = counter
+		cast_time_player[player_uuid]["cooldown"] = cooldown
+		cast_time_player[player_uuid]["positionx"] = Player:GetPosX()
+		cast_time_player[player_uuid]["positiony"] = Player:GetPosY()
+		cast_time_player[player_uuid]["positionz"] = Player:GetPosZ()
 		return true
 	end
-	if cooldown_player[player_name] == nil then
-		cooldown_player[player_name] = {}
+	if cooldown_player[player_uuid] == nil then
+		cooldown_player[player_uuid] = {}
 	end
-	if check_magic(player, spells[counter]["magic"]) then
-		if cooldown_player[player_name][counter][spells[counter]["cooldown"]] == nil then
-			cooldown_player[player_name][counter][spells[counter]["cooldown"]] = 0
+	if check_magic(Player, spells[counter]["magic"]) then
+		if cooldown_player[player_uuid][counter][spells[counter]["cooldown"]] == nil then
+			cooldown_player[player_uuid][counter][spells[counter]["cooldown"]] = 0
 		end
-		if cooldown_player[player_name][counter][spells[counter]["cooldown"]] > 0 then
-			player:SendMessage("Spell has to cooldown")
+		if cooldown_player[player_uuid][counter][spells[counter]["cooldown"]] > 0 then
+			Player:SendMessage("Spell has to cooldown")
 		else
-			if rem_magic(player, spells[counter]["magic"]) then
-				assert(loadfile(PLUGIN:GetLocalFolder() .. "/spells/" .. spells[counter]["name"] .. "/" .. spells[counter]["name"] .. ".lua"))(command, player)
+			if rem_magic(Player, spells[counter]["magic"]) then
+				assert(loadfile(PLUGIN:GetLocalFolder() .. "/spells/" .. spells[counter]["name"] .. "/" .. spells[counter]["name"] .. ".lua"))(command, Player)
 			end
 		end
-		if cooldown_player[player_name][counter][spells[counter]["cooldown"]] == 0 then
-			cooldown_player[player_name][counter][spells[counter]["cooldown"]] = cooldown
+		if cooldown_player[player_uuid][counter][spells[counter]["cooldown"]] == 0 then
+			cooldown_player[player_uuid][counter][spells[counter]["cooldown"]] = cooldown
 		end
 	else
-		send_battlelog(player, "not enough Magic!")
+		send_battlelog(Player, "not enough Magic!")
 	end
 end
 
-function check_magic(player, amount)
-	if stats[player:GetName()]["magic"] >= amount then
-		local magic_after = stats[player:GetName()]["magic"] - amount
+function check_magic(Player, amount)
+	if stats[Player:GetUUID()]["magic"] >= amount then
+		local magic_after = stats[Player:GetUUID()]["magic"] - amount
 		return true
 	else
 		return false
 	end
 end
 
-function rem_magic(player, amount)
-	local player_name = player:GetName()
-	if stats[player_name]["magic"] >= amount then
-		local magic_after = stats[player_name]["magic"] - amount
-		stats[player_name]["magic"] = magic_after
+function rem_magic(Player, amount)
+	local player_uuid = Player:GetUUID()
+	if stats[player_uuid]["magic"] >= amount then
+		local magic_after = stats[player_uuid]["magic"] - amount
+		stats[player_uuid]["magic"] = magic_after
 		return true
 	else
-		send_battlelog(player, "not enough Magic!")
+		send_battlelog(Player, "not enough Magic!")
 		return false
 	end
 end
 
-function add_magic_regeneration(player, percentage, stats)
-	local player_name = player:GetName()
-	if stats[player_name]["magic"] < stats[player_name]["magic_max"] then
-		local magic_after = stats[player_name]["magic"] + math.floor(stats[player_name]["magic_max"] * percentage / 10) / 10
-		stats[player_name]["magic"] = magic_after
+function add_magic_regeneration(Player, percentage, stats)
+	local player_uuid = Player:GetUUID()
+	if stats[player_uuid]["magic"] < stats[player_uuid]["magic_max"] then
+		local magic_after = stats[player_uuid]["magic"] + math.floor(stats[player_uuid]["magic_max"] * percentage / 10) / 10
+		stats[player_uuid]["magic"] = magic_after
 		end
 end
 
-function add_health_regeneration(player, stats)
-	local player_name = player:GetName()
-	if stats[player_name]["health_before"] < player:GetHealth() and stats[player_name]["health"] < player:GetMaxHealth() then
-		stats[player_name]["health"] = stats[player_name]["health"] + 1
+function add_health_regeneration(Player, stats)
+	local player_uuid = Player:GetUUID()
+	if stats[player_uuid]["health_before"] < Player:GetHealth() and stats[player_uuid]["health"] < Player:GetMaxHealth() then
+		stats[player_uuid]["health"] = stats[player_uuid]["health"] + 1
 	end
-	player:SetHealth(stats[player_name]["health"] / (player:GetMaxHealth() / 20))
-	stats[player_name]["health_before"] = player:GetHealth()
+	Player:SetHealth(stats[player_uuid]["health"] / (Player:GetMaxHealth() / 20))
+	stats[player_uuid]["health_before"] = Player:GetHealth()
 end
 
 function MyOnWorldTick(World, TimeDelta)
 	-- add MAGIC regeneration
-	local callback = function(player)
-		local player_name = player:GetName()
-		add_magic_regeneration(player, 1, stats)
-		add_health_regeneration(player, stats)
-		if cast_time_player[player_name] == nil then
-			cast_time_player[player_name] = {}
+	local callback = function(Player)
+		local player_uuid = Player:GetUUID()
+		add_magic_regeneration(Player, 1, stats)
+		add_health_regeneration(Player, stats)
+		if cast_time_player[player_uuid] == nil then
+			cast_time_player[player_uuid] = {}
 		end
-		if cast_time_player[player_name]["cast_time"] == nil then
-			cast_time_player[player_name]["cast_time"] = 0
+		if cast_time_player[player_uuid]["cast_time"] == nil then
+			cast_time_player[player_uuid]["cast_time"] = 0
 		end
-		if cast_time_player[player_name]["cast_time"] > 0 then
-			cast_time_player[player_name]["cast_time"] = cast_time_player[player_name]["cast_time"] - 1
-			if cast_time_player[player_name]["positionx"] ~= player:GetPosX() or cast_time_player[player_name]["positiony"] ~= player:GetPosY() or cast_time_player[player_name]["positionz"] ~= player:GetPosZ() then
-				send_battlelog(player, "Casting aborted!")
-				cast_time_player[player_name]["cast_time"] = 0
+		if cast_time_player[player_uuid]["cast_time"] > 0 then
+			cast_time_player[player_uuid]["cast_time"] = cast_time_player[player_uuid]["cast_time"] - 1
+			if cast_time_player[player_uuid]["positionx"] ~= Player:GetPosX() or cast_time_player[player_uuid]["positiony"] ~= Player:GetPosY() or cast_time_player[player_uuid]["positionz"] ~= Player:GetPosZ() then
+				send_battlelog(Player, "Casting aborted!")
+				cast_time_player[player_uuid]["cast_time"] = 0
 				return true
 			end
-			if cast_time_player[player_name]["cast_time"] == 0 then
-				send_battlelog(player, "Casting!")
-				dospell(cast_time_player[player_name]["command"], cast_time_player[player_name]["player"], cast_time_player[player_name]["cooldown"], 0, cast_time_player[player_name]["counter"])
+			if cast_time_player[player_uuid]["cast_time"] == 0 then
+				send_battlelog(Player, "Casting!")
+				dospell(cast_time_player[player_uuid]["command"], cast_time_player[player_uuid]["player"], cast_time_player[player_uuid]["cooldown"], 0, cast_time_player[player_uuid]["counter"])
 			end
 		end
 		local i = spell_counter - 1
 		while i > 0 do
-			if cooldown_player[player_name] == nil then
-				cooldown_player[player_name] = {}
+			if cooldown_player[player_uuid] == nil then
+				cooldown_player[player_uuid] = {}
 			end
-			if cooldown_player[player_name][i] == nil then
-				cooldown_player[player_name][i] = {}
-				cooldown_player[player_name][i][spells[i]["cooldown"]] = 0
+			if cooldown_player[player_uuid][i] == nil then
+				cooldown_player[player_uuid][i] = {}
+				cooldown_player[player_uuid][i][spells[i]["cooldown"]] = 0
 			end
-			if cooldown_player[player_name][i]["cooldown_before"] == 1 then
-				send_battlelog(player, spells[i]["name"] .. ": cooled down")
-				cooldown_player[player_name][i]["cooldown_before"] = 0
+			if cooldown_player[player_uuid][i]["cooldown_before"] == 1 then
+				send_battlelog(Player, spells[i]["name"] .. ": cooled down")
+				cooldown_player[player_uuid][i]["cooldown_before"] = 0
 			end
-			if cooldown_player[player_name][i][spells[i]["cooldown"]] > 0 then
-				cooldown_player[player_name][i][spells[i]["cooldown"]] = cooldown_player[player_name][i][spells[i]["cooldown"]] - 1
-				if cooldown_player[player_name][i][spells[i]["cooldown"]] == 0 then
+			if cooldown_player[player_uuid][i][spells[i]["cooldown"]] > 0 then
+				cooldown_player[player_uuid][i][spells[i]["cooldown"]] = cooldown_player[player_uuid][i][spells[i]["cooldown"]] - 1
+				if cooldown_player[player_uuid][i][spells[i]["cooldown"]] == 0 then
 				end
-				if cooldown_player[player_name][i][spells[i]["cooldown"]] == 0 then
-					cooldown_player[player_name][i]["cooldown_before"] = 1
+				if cooldown_player[player_uuid][i][spells[i]["cooldown"]] == 0 then
+					cooldown_player[player_uuid][i]["cooldown_before"] = 1
 				end
 			end
 			i = i - 1
 		end
 		counter = 75
-		if stats[player:GetName()]["statusbar"] == 1 and cast_time_player[player_name]["cast_time"] ~= 0 then
+		if stats[Player:GetUUID()]["statusbar"] == 1 and cast_time_player[player_uuid]["cast_time"] ~= 0 then
 			local bar_range = 40
-			local load = bar_range / (cast_time_player[player_name]["cast_time_max"] / cast_time_player[player_name]["cast_time"])
+			local load = bar_range / (cast_time_player[player_uuid]["cast_time_max"] / cast_time_player[player_uuid]["cast_time"])
 			local load_message = ""
 			local load_a = bar_range - load
 			while load_a > 0 do
@@ -304,10 +307,10 @@ function MyOnWorldTick(World, TimeDelta)
 				load_message = load_message .. "-"
 				load = load - 1
 			end
-			player:SendAboveActionBarMessage("[" .. load_message .. "]")
+			Player:SendAboveActionBarMessage("[" .. load_message .. "]")
 		end
-		if stats[player_name]["statusbar"] == 1 and cast_time_player[player_name]["cast_time"] == 0 then
-			player:SendAboveActionBarMessage("Health: " .. stats[player_name]["health"] .. " / " .. player:GetMaxHealth() .. " | Magic: " .. stats[player_name]["magic"] .. " / " .. stats[player_name]["magic_max"] .. " | lvl: " .. stats[player_name]["level"] .. " | exp: " .. stats[player_name]["exp"] .. " / " .. calc_exp_to_level(stats[player_name]["level"] + 1))
+		if stats[player_uuid]["statusbar"] == 1 and cast_time_player[player_uuid]["cast_time"] == 0 then
+			Player:SendAboveActionBarMessage("Health: " .. stats[player_uuid]["health"] .. " / " .. Player:GetMaxHealth() .. " | Magic: " .. stats[player_uuid]["magic"] .. " / " .. stats[player_uuid]["magic_max"] .. " | lvl: " .. stats[player_uuid]["level"] .. " | exp: " .. stats[player_uuid]["exp"] .. " / " .. calc_exp_to_level(stats[player_uuid]["level"] + 1))
 		end
 	end
 	counter = counter + 1
@@ -323,27 +326,27 @@ function MyOnWorldTick(World, TimeDelta)
 end
 
 function battlelog(command, player)
-	if stats[player:GetName()]["battlelog"] == 0 then
-		stats[player:GetName()]["battlelog"] = 1
-		player:SendMessage("turned Battlelog on")
+	if stats[Player:GetUUID()]["battlelog"] == 0 then
+		stats[Player:GetUUID()]["battlelog"] = 1
+		Player:SendMessage("turned Battlelog on")
 		return true
 	end
-	if stats[player:GetName()]["battlelog"] == 1 then
-		stats[player:GetName()]["battlelog"] = 0
-		player:SendMessage("turned Battlelog off")
+	if stats[Player:GetUUID()]["battlelog"] == 1 then
+		stats[Player:GetUUID()]["battlelog"] = 0
+		Player:SendMessage("turned Battlelog off")
 		return true
 	end
 end
 
 function statusbar(command, player)
-	if stats[player:GetName()]["statusbar"] == 0 then
-		stats[player:GetName()]["statusbar"] = 1
-		player:SendMessage("turned Statusbar on")
+	if stats[Player:GetUUID()]["statusbar"] == 0 then
+		stats[Player:GetUUID()]["statusbar"] = 1
+		Player:SendMessage("turned Statusbar on")
 		return true
 	end
-	if stats[player:GetName()]["statusbar"] == 1 then
-		stats[player:GetName()]["statusbar"] = 0
-		player:SendMessage("turned Statusbar off")
+	if stats[Player:GetUUID()]["statusbar"] == 1 then
+		stats[Player:GetUUID()]["statusbar"] = 0
+		Player:SendMessage("turned Statusbar off")
 		return true
 	end
 end
@@ -356,22 +359,22 @@ function MyOnPlayerJoined(Player)
 		register_new_player(Player)
 	end
 	show_stats(Player)
-	Player:SetMaxHealth(20 * (stats[Player:GetName()]["endurance"]))
+	Player:SetMaxHealth(20 * (stats[Player:GetUUID()]["endurance"]))
 end
 
 function show_stats (Player)
-	 Player:SendMessage("exp: " .. stats[Player:GetName()]["exp"])
-	 Player:SendMessage("Strength: " .. stats[Player:GetName()]["strength"])
-	 Player:SendMessage("Agility: " .. stats[Player:GetName()]["agility"])
-	 Player:SendMessage("Luck: " .. stats[Player:GetName()]["luck"])
-	 Player:SendMessage("Intelligence: " .. stats[Player:GetName()]["intelligence"])
-	 Player:SendMessage("Endurance: " .. stats[Player:GetName()]["endurance"])
-	 Player:SendMessage("Level: " .. stats[Player:GetName()]["level"])
-	 Player:SendMessage("Magic: " .. stats[Player:GetName()]["magic"] .. " of " .. stats[Player:GetName()]["magic_max"])
-	 if stats[Player:GetName()]["fraction"] == nil  or stats[Player:GetName()]["fraction"] == "" then
+	 Player:SendMessage("exp: " .. stats[Player:GetUUID()]["exp"])
+	 Player:SendMessage("Strength: " .. stats[Player:GetUUID()]["strength"])
+	 Player:SendMessage("Agility: " .. stats[Player:GetUUID()]["agility"])
+	 Player:SendMessage("Luck: " .. stats[Player:GetUUID()]["luck"])
+	 Player:SendMessage("Intelligence: " .. stats[Player:GetUUID()]["intelligence"])
+	 Player:SendMessage("Endurance: " .. stats[Player:GetUUID()]["endurance"])
+	 Player:SendMessage("Level: " .. stats[Player:GetUUID()]["level"])
+	 Player:SendMessage("Magic: " .. stats[Player:GetUUID()]["magic"] .. " of " .. stats[Player:GetUUID()]["magic_max"])
+	 if stats[Player:GetUUID()]["fraction"] == nil  or stats[Player:GetUUID()]["fraction"] == "" then
 	 	Player:SendMessage("Use /mmo join horde/alliance to join a fraction")
 	 else
-		Player:SendMessage("Fraction: " .. stats[Player:GetName()]["fraction"])
+		Player:SendMessage("Fraction: " .. stats[Player:GetUUID()]["fraction"])
 	 end
 	 if calc_available_skill_points(Player) ~= 0 then
 		 Player:SendMessage("Available Skillpoints: " .. calc_available_skill_points(Player))
@@ -381,10 +384,10 @@ end
 function get_stats_initialize(Player)
 	g_Storage:ExecuteCommand("initialize_player",
 	{
-		player_name = Player:GetName();
+		player_uuid = Player:GetUUID();
 	},
 	function(stats_sql)
-		stats[Player:GetName()] = stats_sql
+		stats[Player:GetUUID()] = stats_sql
 	end
 	)
 	return stats
@@ -392,13 +395,13 @@ end
 
 function checkifexist(Player)
 	-- return true if player exists in db otherwise false
-	if stats == nil or stats[Player:GetName()] == nil then
+	if stats == nil or stats[Player:GetUUID()] == nil then
 		stats = get_stats_initialize(Player)
 	end
-	if stats[Player:GetName()] == nil then
+	if stats[Player:GetUUID()] == nil then
 		return false
 	end
-	if stats[Player:GetName()]["name"] == Player:GetName() then
+	if stats[Player:GetUUID()]["uuid"] == Player:GetUUID() then
 		return true
 	end
 	return false
@@ -406,10 +409,10 @@ end
 
 function register_new_player(Player)
 	-- register new player in database
-	player_name = Player:GetName()
+	player_uuid = Player:GetUUID()
 	g_Storage:ExecuteCommand("register_new_player",
 		{
-			player_name = player_name,
+			player_uuid = player_uuid,
 		  exp = 0,
 		  health = 20,
 		  health_before = 20,
@@ -426,22 +429,22 @@ function register_new_player(Player)
 			level = 1
 		}
 	)
-	stats[player_name] = {}
-	stats[player_name]["name"] = player_name
-	stats[player_name]["exp"] = 0
-	stats[player_name]["health"] = 20
-	stats[player_name]["health_before"] = 20
-	stats[player_name]["strength"] = 1
-	stats[player_name]["agility"] = 1
-	stats[player_name]["luck"] = 1
-	stats[player_name]["intelligence"] = 1
-	stats[player_name]["endurance"] = 1
-	stats[player_name]["skillpoints"] = 0
-	stats[player_name]["battlelog"] = battlelog_default
-	stats[player_name]["statusbar"] = statusbar_default
-	stats[player_name]["magic"] = 100
-	stats[player_name]["magic_max"] = 100
-	stats[player_name]["level"] = 1
+	stats[player_uuid] = {}
+	stats[player_uuid]["uuid"] = player_uuid
+	stats[player_uuid]["exp"] = 0
+	stats[player_uuid]["health"] = 20
+	stats[player_uuid]["health_before"] = 20
+	stats[player_uuid]["strength"] = 1
+	stats[player_uuid]["agility"] = 1
+	stats[player_uuid]["luck"] = 1
+	stats[player_uuid]["intelligence"] = 1
+	stats[player_uuid]["endurance"] = 1
+	stats[player_uuid]["skillpoints"] = 0
+	stats[player_uuid]["battlelog"] = battlelog_default
+	stats[player_uuid]["statusbar"] = statusbar_default
+	stats[player_uuid]["magic"] = 100
+	stats[player_uuid]["magic_max"] = 100
+	stats[player_uuid]["level"] = 1
 end
 
 function MyOnKilled(Victim, TDI)
@@ -453,127 +456,128 @@ function MyOnKilled(Victim, TDI)
 	end
 	local exp = 0
 	if TDI.Attacker ~= nil and TDI.Attacker:IsPlayer() then
-		local player = tolua.cast(TDI.Attacker, "cPlayer")
+		local Player = tolua.cast(TDI.Attacker, "cPlayer")
 		if TDI.Attacker ~= nil and Victim:IsPlayer() and TDI.Attacker:IsPlayer() then
-			exp = 25 * calc_level(stats[player:GetName()]["exp"])
-			send_battlelog(player, "You killed a Player")
+			exp = 25 * calc_level(stats[Player:GetUUID()]["exp"])
+			send_battlelog(Player, "You killed a Player")
 		end
 		if (TDI.Attacker ~= nil and TDI.Attacker:IsPlayer() and Victim:IsMob()) then
 			-- TODO extend monsterlist
 			if Victim:GetMobFamily() == 0 then
-				send_battlelog(player, "You killed a Monster")
+				send_battlelog(Player, "You killed a Monster")
 				exp = 5
 			end
 			if Victim:GetMobFamily() == 1 then
-				send_battlelog(player, "You killed a Animal")
+				send_battlelog(Player, "You killed a Animal")
 				exp = 1
 			end
 			if Victim:GetMobFamily() == 3 then
-				send_battlelog(player, "You killed a Water Animal")
+				send_battlelog(Player, "You killed a Water Animal")
 				exp = 1
 			end
 			if Victim:GetMobFamily() == 2 then
-				send_battlelog(player, "You killed Something Mysterious")
+				send_battlelog(Player, "You killed Something Mysterious")
 				exp = 5
 			end
 		end
-		if TDI.Attacker ~= nil and TDI.Attacker:IsPlayer() and give_exp(exp, player) then
-			stats[player:GetName()]["level"] = calc_level(stats[player:GetName()]["exp"])
-			send_battlelog(player, "Level UP! you are now Level " .. stats[player:GetName()]["level"])
+		if TDI.Attacker ~= nil and TDI.Attacker:IsPlayer() and give_exp(exp, Player) then
+			stats[Player:GetUUID()]["level"] = calc_level(stats[Player:GetUUID()]["exp"])
+			send_battlelog(Player, "Level UP! you are now Level " .. stats[Player:GetUUID()]["level"])
 		end
 	end
 end
 
-function calc_available_skill_points(player)
+function calc_available_skill_points(Player)
 	-- calculate not given skill points
-	local available_points = stats[player:GetName()]["level"] + 4 - (stats[player:GetName()]["strength"] + stats[player:GetName()]["endurance"] + stats[player:GetName()]["intelligence"] + stats[player:GetName()]["agility"] + stats[player:GetName()]["luck"])
+	local available_points = stats[Player:GetUUID()]["level"] + 4 - (stats[Player:GetUUID()]["strength"] + stats[Player:GetUUID()]["endurance"] + stats[Player:GetUUID()]["intelligence"] + stats[Player:GetUUID()]["agility"] + stats[Player:GetUUID()]["luck"])
 	return available_points
 end
 
-function add_skill(player, skillname)
+function add_skill(Player, skillname)
 	-- add skill point to the given skill if skillpoints available
-	if calc_available_skill_points(player) > 0 then
-		stats[player:GetName()][skillname[2]] = stats[player:GetName()][skillname[2]] + 1
+	if calc_available_skill_points(Player) > 0 then
+		stats[Player:GetUUID()][skillname[2]] = stats[Player:GetUUID()][skillname[2]] + 1
 		if skillname[2] == "endurance" then
-			player:SetMaxHealth(player:GetMaxHealth() + 20)
+			Player:SetMaxHealth(Player:GetMaxHealth() + 20)
 		end
 		if skillname[2] == "intelligence" then
-			stats[player:GetName()]["magic_max"] = stats[player:GetName()]["magic_max"] + 100
+			stats[Player:GetUUID()]["magic_max"] = stats[Player:GetUUID()]["magic_max"] + 100
 		end
 		return true
 	end
 	return false
 end
 
-function skills(skillname, player)
+function skills(skillname, Player)
 	if skillname[2] == nil then
-		show_stats(player)
+		show_stats(Player)
 		return true
 	end
-	if skillname[2] == "strength" and add_skill(player, skillname) then
-		player:SendMessage("added 1 Point to Strength")
+	if skillname[2] == "strength" and add_skill(Player, skillname) then
+		Player:SendMessage("added 1 Point to Strength")
 		return true
 	end
-	if skillname[2] == "endurance" and add_skill(player, skillname) then
-		player:SendMessage("added 1 Point to Endurance")
+	if skillname[2] == "endurance" and add_skill(Player, skillname) then
+		Player:SendMessage("added 1 Point to Endurance")
 		return true
 	end
-	if skillname[2] == "intelligence" and add_skill(player, skillname) then
-		player:SendMessage("added 1 Point to Intelligence")
+	if skillname[2] == "intelligence" and add_skill(Player, skillname) then
+		Player:SendMessage("added 1 Point to Intelligence")
 		return true
 	end
-	if skillname[2] == "agility" and add_skill(player, skillname) then
-		player:SendMessage("added 1 Point to Agility")
+	if skillname[2] == "agility" and add_skill(Player, skillname) then
+		Player:SendMessage("added 1 Point to Agility")
 		return true
 	end
-	if skillname[2] == "luck" and add_skill(player, skillname) then
-		player:SendMessage("added 1 Point to Luck")
+	if skillname[2] == "luck" and add_skill(Player, skillname) then
+		Player:SendMessage("added 1 Point to Luck")
 		return true
 	end
-	player:SendMessage("You have not enough Available Skill Points")
+	Player:SendMessage("You have not enough Available Skill Points")
+	Player:SendMessage("or you wrote the spell wrong")
 	return true
 end
 
 function MyOnTakeDamage(Receiver, TDI)
 	if TDI.Attacker ~= nil and Receiver:IsPlayer() and TDI.Attacker:IsPlayer() then
-		local player = tolua.cast(TDI.Attacker, "cPlayer")
-		local attacker_name = player:GetName()
+		local Player = tolua.cast(TDI.Attacker, "cPlayer")
+		local attacker_name = Player:GetUUID()
 		if stats[receiver_name]["fraction"] == stats[attacker_name]["fraction"] then
 			TDI.FinalDamage = 0
-			player:SendMessage("this Player is in the same Fraction")
+			Player:SendMessage("this Player is in the same Fraction")
 			return true
 		end
 	end
 	if TDI.Attacker ~= nil and TDI.Attacker:IsPlayer() then
-		local player = tolua.cast(TDI.Attacker, "cPlayer")
-		local attacker_name = player:GetName()
+		local Player = tolua.cast(TDI.Attacker, "cPlayer")
+		local attacker_name = Player:GetUUID()
 		TDI.FinalDamage = TDI.FinalDamage / 5 * stats[attacker_name]["strength"]; -- lower damage to make better balance
 		if math.random(0,100) <= stats[attacker_name]["luck"] then
 			TDI.FinalDamage = TDI.FinalDamage * 2
-			send_battlelog(player, "You did a Critical Hit!")
+			send_battlelog(Player, "You did a Critical Hit!")
 		end
 		if TDI.FinalDamage == 0 then
 			TDI.FinalDamage = 1	-- we won't have damage = 0 :)
 		end
-		send_battlelog(player, "you did " .. TDI.FinalDamage .. " Damage")
+		send_battlelog(Player, "you did " .. TDI.FinalDamage .. " Damage")
 	end
 	if Receiver:IsPlayer() then
-		local player = tolua.cast(Receiver, "cPlayer")
-		local receiver_name = player:GetName()
+		local Player = tolua.cast(Receiver, "cPlayer")
+		local receiver_name = Player:GetUUID()
 		if TDI.DamageType ~= 3 then
 			-- add dodge with LUCK and AGILITY
 			if math.random(0,100) < (stats[receiver_name]["luck"] + stats[receiver_name]["agility"]) then
 				TDI.FinalDamage = 0
-				send_battlelog(player, "you dodged the Attack")
+				send_battlelog(Player, "you dodged the Attack")
 			else
 				TDI.FinalDamage = TDI.FinalDamage * 2 -- add damage for better balance
-				send_battlelog(player, "you got " .. TDI.FinalDamage .. " Damage")
+				send_battlelog(Player, "you got " .. TDI.FinalDamage .. " Damage")
 			end
 		end
 		-- Fall Damage somewhat with agility
 		if TDI.DamageType == 3 then
 			TDI.FinalDamage = TDI.FinalDamage / (stats[receiver_name]["agility"] / 5)
-			send_battlelog(player, "you got " .. TDI.FinalDamage .. " Fall Damage")
+			send_battlelog(Player, "you got " .. TDI.FinalDamage .. " Fall Damage")
 		end
 		if stats[receiver_name]["health"] > TDI.FinalDamage then
 			stats[receiver_name]["health"] = stats[receiver_name]["health"] - TDI.FinalDamage
@@ -585,29 +589,29 @@ function MyOnTakeDamage(Receiver, TDI)
 	end
 end
 
-function get_exp(player)
-	return stats[player:GetName()]["exp"]
+function get_exp(Player)
+	return stats[Player:GetUUID()]["exp"]
 end
 
-function send_battlelog(player, message)
+function send_battlelog(Player, message)
 	-- Get if battlelog is on or off from DB
-	if stats[player:GetName()]["battlelog"] == 1 then
-		player:SendMessage(message)
+	if stats[Player:GetUUID()]["battlelog"] == 1 then
+		Player:SendMessage(message)
 	end
 end
 
-function give_exp(exp, player)
+function give_exp(exp, Player)
 	-- add given exp in database return true if level up otherwise false
 	exp = exp * exp_multiplicator
-	send_battlelog(player, "you earned " .. exp .. " exp")
-	local cexp = get_exp(player)
+	send_battlelog(Player, "you earned " .. exp .. " exp")
+	local cexp = get_exp(Player)
 	local level_before = calc_level(cexp)
 	-- add exp in database
 	local exp_after = cexp + exp
-	stats[player:GetName()]["exp"] = exp_after
+	stats[Player:GetUUID()]["exp"] = exp_after
 	local level_after = calc_level(exp_after)
 	if level_before < level_after then
-		stats[player:GetName()]["skillpoints"] = stats[player:GetName()]["skillpoints"] + 1
+		stats[Player:GetUUID()]["skillpoints"] = stats[Player:GetUUID()]["skillpoints"] + 1
 		return true
 	end
 	return false
