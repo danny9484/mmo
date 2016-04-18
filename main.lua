@@ -119,7 +119,7 @@ end
 
 function save_player(Player)
 	local player_uuid = Player:GetUUID()
-	g_Storage:ExecuteCommand("save_player",
+	g_Storage:ExecuteCommand("save_player", -- TODO this function is slow use sth own
 		{
 			player_uuid = stats[player_uuid]["uuid"],
 			exp = stats[player_uuid]["exp"],
@@ -229,7 +229,7 @@ function rem_magic(Player, amount)
 	end
 end
 
-function add_magic_regeneration(Player, percentage, stats)
+function add_magic_regeneration(Player, percentage, stats) -- TODO sometimes it loads over max, check that
 	local player_uuid = Player:GetUUID()
 	if stats[player_uuid]["magic"] < stats[player_uuid]["magic_max"] then
 		local magic_after = stats[player_uuid]["magic"] + math.floor(stats[player_uuid]["magic_max"] * percentage / 10) / 10
@@ -299,7 +299,7 @@ function MyOnWorldTick(World, TimeDelta)
 			local load = bar_range / (cast_time_player[player_uuid]["cast_time_max"] / cast_time_player[player_uuid]["cast_time"])
 			local load_message = ""
 			local load_a = bar_range - load
-			while load_a > 0 do
+			while load_a > 0 do	-- TODO check this function, bar length increases with load but it should always be the same
 				load_message = "#" .. load_message
 				load_a = load_a - 1
 			end
@@ -310,11 +310,11 @@ function MyOnWorldTick(World, TimeDelta)
 			Player:SendAboveActionBarMessage("[" .. load_message .. "]")
 		end
 		if stats[player_uuid]["statusbar"] == 1 and cast_time_player[player_uuid]["cast_time"] == 0 then
-			Player:SendAboveActionBarMessage("Health: " .. stats[player_uuid]["health"] .. " / " .. Player:GetMaxHealth() .. " | Magic: " .. stats[player_uuid]["magic"] .. " / " .. stats[player_uuid]["magic_max"] .. " | lvl: " .. stats[player_uuid]["level"] .. " | exp: " .. stats[player_uuid]["exp"] .. " / " .. calc_exp_to_level(stats[player_uuid]["level"] + 1))
+			Player:SendAboveActionBarMessage("Health: " .. stats[player_uuid]["health"] .. " / " .. Player:GetMaxHealth() .. " | Magic: " .. stats[player_uuid]["magic"] .. " / " .. stats[player_uuid]["magic_max"] .. " | lvl: " .. stats[player_uuid]["level"] .. " | exp: " .. stats[player_uuid]["exp"] .. " / " .. math.floor(calc_exp_to_level(stats[player_uuid]["level"] + 1)))
 		end
 	end
 	counter = counter + 1
-	if counter > 50 then
+	if counter > 50 then	-- TODO think of sth better than that, this will break at some playercount
 		World:ForEachPlayer(callback)
 		if counter == 75 then
 			counter = 0
@@ -534,7 +534,7 @@ function skills(skillname, Player)
 		return true
 	end
 	Player:SendMessage("You have not enough Available Skill Points")
-	Player:SendMessage("or you wrote the spell wrong")
+	Player:SendMessage("or you wrote the spell wrong") -- TODO handle mistakes in writing
 	return true
 end
 
@@ -542,7 +542,7 @@ function MyOnTakeDamage(Receiver, TDI)
 	if TDI.Attacker ~= nil and Receiver:IsPlayer() and TDI.Attacker:IsPlayer() then
 		local Player = tolua.cast(TDI.Attacker, "cPlayer")
 		local attacker_name = Player:GetUUID()
-		if stats[receiver_name]["fraction"] == stats[attacker_name]["fraction"] then
+		if stats[attacker_name]["fraction"] != "" and stats[receiver_name]["fraction"] != "" and stats[receiver_name]["fraction"] == stats[attacker_name]["fraction"] then
 			TDI.FinalDamage = 0
 			Player:SendMessage("this Player is in the same Fraction")
 			return true
@@ -583,8 +583,8 @@ function MyOnTakeDamage(Receiver, TDI)
 			stats[receiver_name]["health"] = stats[receiver_name]["health"] - TDI.FinalDamage
 			TDI.FinalDamage = 1
 		end
-		if stats[receiver_name] == 0 then
-			TDI.FinalDamage = 20 -- lets be sure to kill him
+		if stats[receiver_name]["health"] == 0 then
+			TDI.FinalDamage = 25 -- lets be sure to kill him
 		end
 	end
 end
