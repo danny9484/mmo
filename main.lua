@@ -542,7 +542,7 @@ function MyOnTakeDamage(Receiver, TDI)
 	if TDI.Attacker ~= nil and Receiver:IsPlayer() and TDI.Attacker:IsPlayer() then
 		local Player = tolua.cast(TDI.Attacker, "cPlayer")
 		local attacker_name = Player:GetUUID()
-		if stats[attacker_name]["fraction"] != "" and stats[receiver_name]["fraction"] != "" and stats[receiver_name]["fraction"] == stats[attacker_name]["fraction"] then
+		if stats[attacker_name]["fraction"] ~= "" and stats[receiver_name]["fraction"] ~= "" and stats[receiver_name]["fraction"] == stats[attacker_name]["fraction"] then
 			TDI.FinalDamage = 0
 			Player:SendMessage("this Player is in the same Fraction")
 			return true
